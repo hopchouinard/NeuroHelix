@@ -6,6 +6,7 @@ logs/
 data/outputs/
 data/corpus/
 data/reports/
+data/publishing/
 
 # Dashboards (generated, can be excluded)
 dashboards/*.html
@@ -14,6 +15,8 @@ dashboards/*.html
 # Environment secrets
 config/env.local.sh
 .env
+.env.local
+.env.*
 
 # System files
 .DS_Store
@@ -24,3 +27,10 @@ Thumbs.db
 *.bak
 *.swp
 *~
+
+# Static site build artifacts
+site/node_modules/
+site/dist/
+site/.astro/
+site/.deploy-cache/
+logs/publishing/

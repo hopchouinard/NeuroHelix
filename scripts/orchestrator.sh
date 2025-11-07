@@ -28,9 +28,21 @@ log "📝 Step 2: Aggregating results..."
 log "🎨 Step 3: Generating dashboard..."
 "${PROJECT_ROOT}/scripts/renderers/generate_dashboard.sh" 2>&1 | tee -a "$LOG_FILE"
 
-# Step 4: Send notification (optional)
+# Step 4: Export static site payload
+log "📦 Step 4: Exporting static site payload..."
+"${PROJECT_ROOT}/scripts/renderers/export_site_payload.sh" 2>&1 | tee -a "$LOG_FILE"
+
+# Step 5: Publish static site (if enabled)
+if [ "${ENABLE_STATIC_SITE_PUBLISHING:-false}" = "true" ]; then
+    log "🌐 Step 5: Publishing static site..."
+    "${PROJECT_ROOT}/scripts/publish/static_site.sh" 2>&1 | tee -a "$LOG_FILE"
+else
+    log "⏭️  Step 5: Static site publishing disabled"
+fi
+
+# Step 6: Send notification (optional)
 if [ "${ENABLE_NOTIFICATIONS:-false}" = "true" ]; then
-    log "📧 Step 4: Sending notification..."
+    log "📧 Step 6: Sending notification..."
     "${PROJECT_ROOT}/scripts/notifiers/notify.sh" 2>&1 | tee -a "$LOG_FILE"
 fi
 

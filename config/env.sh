@@ -28,3 +28,9 @@ export MAX_PARALLEL_JOBS="4"
 # Notification settings (if enabled)
 export NOTIFICATION_EMAIL=""
 export DISCORD_WEBHOOK_URL=""
+
+# Static Site Publishing
+export PUBLISHING_DIR="${DATA_DIR}/publishing"
+export ENABLE_STATIC_SITE_PUBLISHING="true"
+export CLOUDFLARE_PROJECT_NAME="neurohelix-site"
+export CLOUDFLARE_PRODUCTION_DOMAIN="neurohelix.patchoutech.com"

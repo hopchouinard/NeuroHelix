@@ -37,9 +37,11 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:HOME_PLACEHOLDER/.local/bin</string>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:HOME_PLACEHOLDER/.local/bin</string>
         <key>HOME</key>
         <string>HOME_PLACEHOLDER</string>
+        <key>CLOUDFLARE_API_TOKEN</key>
+        <string>CLOUDFLARE_TOKEN_PLACEHOLDER</string>
     </dict>
     
     <!-- Run even when user is not logged in (optional) -->

@@ -43,8 +43,22 @@ fi
 
 # Create personalized plist from template
 echo "📝 Creating launchd configuration..."
+
+# Check for Cloudflare token
+CLOUDFLARE_TOKEN=""
+if [ -f "${PROJECT_ROOT}/.env.local" ]; then
+    CLOUDFLARE_TOKEN=$(grep "^CLOUDFLARE_API_TOKEN=" "${PROJECT_ROOT}/.env.local" | cut -d'=' -f2 || echo "")
+fi
+
+if [ -z "$CLOUDFLARE_TOKEN" ]; then
+    echo "⚠️  Warning: CLOUDFLARE_API_TOKEN not found in .env.local"
+    echo "   Static site publishing will be skipped until token is configured"
+    CLOUDFLARE_TOKEN="NOT_CONFIGURED"
+fi
+
 sed "s|PROJECT_ROOT_PLACEHOLDER|${PROJECT_ROOT}|g" "$PLIST_TEMPLATE" | \
-sed "s|HOME_PLACEHOLDER|${HOME}|g" > "$PLIST_DEST"
+sed "s|HOME_PLACEHOLDER|${HOME}|g" | \
+sed "s|CLOUDFLARE_TOKEN_PLACEHOLDER|${CLOUDFLARE_TOKEN}|g" > "$PLIST_DEST"
 
 echo "✅ Created: $PLIST_DEST"
 echo ""
