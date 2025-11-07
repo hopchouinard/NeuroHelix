@@ -479,7 +479,7 @@ This helps the LLM understand the context structure.
 
 - [README.md](../README.md) - Project overview
 - [Gemini CLI Configuration](gemini-cli-config.md) - CLI setup
-- [Synthesis System](../SYNTHESIS_COMPLETE.md) - Report generation
+- [Synthesis System](../ai_dev_logs/SYNTHESIS_COMPLETE.md) - Report generation
 
 ---
 

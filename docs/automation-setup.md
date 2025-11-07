@@ -536,7 +536,7 @@ rm -rf data/ logs/ dashboards/
 ## Related Documentation
 
 - [README.md](../README.md) - Project overview
-- [STATUS.md](../STATUS.md) - System status
+- [STATUS.md](../ai_dev_logs/STATUS.md) - System status
 - [Gemini CLI Configuration](gemini-cli-config.md) - CLI setup
 
 ---

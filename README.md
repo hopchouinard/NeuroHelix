@@ -180,7 +180,7 @@ Comprehensive guides in `docs/`:
 - **[Automation Setup](docs/automation-setup.md)** - LaunchD installation, management, scheduling
 - **[Gemini CLI Config](docs/gemini-cli-config.md)** - CLI setup and troubleshooting
 - **[Context-Aware Prompts](docs/context-aware-prompts.md)** - How temporal context injection works
-- **[STATUS.md](STATUS.md)** - Complete implementation details
+- **[STATUS.md](ai_dev_logs/STATUS.md)** - Complete implementation details
 
 ### 📊 Output Examples
 
@@ -258,7 +258,7 @@ ls -lh dashboards/dashboard_$(date +%Y-%m-%d).html
 ✅ **Intelligent Pipeline** - Context-aware prompts with synthesis  
 ✅ **Comprehensive Documentation** - Setup, management, troubleshooting guides  
 
-See [STATUS.md](STATUS.md) for complete implementation details.
+See [STATUS.md](ai_dev_logs/STATUS.md) for complete implementation details.
 
 ### 📝 License
 
