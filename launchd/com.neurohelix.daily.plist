@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Job Label (must be unique) -->
+    <key>Label</key>
+    <string>com.neurohelix.daily</string>
+    
+    <!-- Program to run -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>PROJECT_ROOT_PLACEHOLDER/scripts/orchestrator.sh</string>
+    </array>
+    
+    <!-- Working Directory -->
+    <key>WorkingDirectory</key>
+    <string>PROJECT_ROOT_PLACEHOLDER</string>
+    
+    <!-- Run daily at 7:00 AM -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    
+    <!-- Standard output log -->
+    <key>StandardOutPath</key>
+    <string>PROJECT_ROOT_PLACEHOLDER/logs/launchd_stdout.log</string>
+    
+    <!-- Standard error log -->
+    <key>StandardErrorPath</key>
+    <string>PROJECT_ROOT_PLACEHOLDER/logs/launchd_stderr.log</string>
+    
+    <!-- Environment variables -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:HOME_PLACEHOLDER/.local/bin</string>
+        <key>HOME</key>
+        <string>HOME_PLACEHOLDER</string>
+    </dict>
+    
+    <!-- Run even when user is not logged in (optional) -->
+    <key>RunAtLoad</key>
+    <false/>
+    
+    <!-- Nice level (0 = normal priority) -->
+    <key>Nice</key>
+    <integer>5</integer>
+    
+    <!-- Keep job alive if it exits -->
+    <key>KeepAlive</key>
+    <false/>
+    
+    <!-- Process type -->
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

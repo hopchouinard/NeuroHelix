@@ -1,0 +1,26 @@
+# Logs
+logs/
+*.log
+
+# Data outputs (exclude from git, too large)
+data/outputs/
+data/corpus/
+data/reports/
+
+# Dashboards (generated, can be excluded)
+dashboards/*.html
+!dashboards/.gitkeep
+
+# Environment secrets
+config/env.local.sh
+.env
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
