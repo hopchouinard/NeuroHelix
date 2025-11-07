@@ -27,3 +27,16 @@ Key questions to unblock implementation
 ◦  Basic KPI row and hero summary,
 ◦  No historical backfill (start from launch date going forward).
 
+## NeuroHelix new features
+
+Please improve the site rendering of the source markdown reports by implementing the following features:
+1. Tag Cloud: Display a tag cloud on the dashboard page showing all unique tags from reports
+2. Search Functionality: Implement a client-side search bar to filter reports by keywords in title and content
+3. Category Filters: Add filter buttons to view reports by category (e.g., AI Trends, Market Analysis)
+4. Make sure to have CSS styles for all the markdown elements used in the reports (headings, lists, code blocks, etc.) for consistent rendering.
+   - Use a clean, modern font like fira code for better readability.
+   - Use the standard markdown rendering styles of GitHub or similar platforms as a reference.
+5. Ensure proper spacing and alignment for all elements to enhance visual hierarchy.
+6. Include a footer with copyright information and links to NeuroHelix social media or contact pages.
+7. Include a Hero Section at the top of the dashboard with a brief description of NeuroHelix and its mission and make it visually appealing with a background image.
+8. This feature is critical for user engagement and content discoverability on the NeuroHelix platform.

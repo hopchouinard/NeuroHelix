@@ -108,14 +108,15 @@ SECTIONS=$(awk '
 
 # Extract Notable Developments (bullet list)
 NOTABLE=$(awk '
+    BEGIN { count = 0 }
     /^---$/ { in_notable = 0 }
     /^### Notable Developments$/ { in_notable = 1; next }
     in_notable && /^\* / {
         content = substr($0, 3)
         gsub(/"/, "\\\"", content)
-        if (NR > start) printf ","
+        if (count > 0) printf ","
         printf "\"%s\"", content
-        start = NR
+        count++
     }
 ' "$REPORT_FILE")
 
