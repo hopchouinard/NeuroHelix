@@ -8,7 +8,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../../config/env.sh"
 
 DATE=$(date +%Y-%m-%d)
 REPORT_FILE="${DATA_DIR}/reports/daily_report_${DATE}.md"
-TAGS_FILE="${DATA_DIR}/outputs/daily/${DATE}/keyword_tag_generator.md"
+TAGS_FILE="${DATA_DIR}/reports/tags_${DATE}.json"
 OUTPUT_DIR="${PUBLISHING_DIR}"
 OUTPUT_FILE="${OUTPUT_DIR}/${DATE}.json"
 
@@ -46,23 +46,16 @@ SUMMARY=$(awk '
     flag && NF { print }
 ' "$REPORT_FILE" | sed 's/"/\\"/g' | awk '{printf "%s ", $0}' | sed 's/ $//')
 
-# Extract tags and categories from Keyword Tag Generator output
-TAGS_JSON="{\"tags\": [], \"categories\": []}"
+# Extract tags and categories from tags JSON file
 if [ -f "$TAGS_FILE" ]; then
-    # Try to extract JSON from the tags file (could be wrapped in markdown code blocks)
-    TAGS_CONTENT=$(cat "$TAGS_FILE")
-    # Try to extract JSON between { and }
-    EXTRACTED_JSON=$(echo "$TAGS_CONTENT" | grep -o '{[^}]*}' | head -1 || echo "")
-    if [ -n "$EXTRACTED_JSON" ]; then
-        # Validate it's valid JSON
-        if echo "$EXTRACTED_JSON" | jq empty 2>/dev/null; then
-            TAGS_JSON="$EXTRACTED_JSON"
-        fi
-    fi
+    TAGS=$(jq -r '.tags // [] | @json' "$TAGS_FILE")
+    CATEGORIES=$(jq -r '.categories // [] | @json' "$TAGS_FILE")
+else
+    echo "⚠️  Warning: Tags file not found: $TAGS_FILE"
+    echo "   Using empty tags and categories"
+    TAGS="[]"
+    CATEGORIES="[]"
 fi
-
-TAGS=$(echo "$TAGS_JSON" | jq -r '.tags // [] | @json')
-CATEGORIES=$(echo "$TAGS_JSON" | jq -r '.categories // [] | @json')
 
 # Extract thematic sections (all ### headings except specific metadata sections)
 SECTIONS=$(awk '

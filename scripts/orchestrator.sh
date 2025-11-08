@@ -24,6 +24,10 @@ log "📊 Step 1: Executing research prompts..."
 log "📝 Step 2: Aggregating results..."
 "${PROJECT_ROOT}/scripts/aggregators/aggregate_daily.sh" 2>&1 | tee -a "$LOG_FILE"
 
+# Step 2.5: Extract tags and categories
+log "🏷️  Step 2.5: Extracting tags and categories..."
+"${PROJECT_ROOT}/scripts/aggregators/extract_tags.sh" 2>&1 | tee -a "$LOG_FILE"
+
 # Step 3: Generate dashboard
 log "🎨 Step 3: Generating dashboard..."
 "${PROJECT_ROOT}/scripts/renderers/generate_dashboard.sh" 2>&1 | tee -a "$LOG_FILE"
