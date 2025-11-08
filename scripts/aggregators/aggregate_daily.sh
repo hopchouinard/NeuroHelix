@@ -4,6 +4,7 @@
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../config/env.sh"
+source "${SCRIPTS_DIR}/lib/telemetry.sh"
 
 DATE=$(date +%Y-%m-%d)
 INPUT_DIR="${DATA_DIR}/outputs/daily/${DATE}"
@@ -27,6 +28,156 @@ if [ ! -d "$INPUT_DIR" ]; then
 fi
 
 echo "Aggregating and synthesizing results for ${DATE}..."
+
+# Function to generate execution summary from telemetry ledger
+generate_execution_summary() {
+    local date="$1"
+    local ledger_file="${RUNTIME_DIR}/execution_ledger_${date}.json"
+    local log_file="${LOGS_DIR}/prompt_execution_${date}.log"
+    
+    # Check if ledger exists (backward compatibility)
+    if [ ! -f "$ledger_file" ]; then
+        echo "<!-- No execution telemetry available for this report -->"
+        return 0
+    fi
+    
+    # Extract summary statistics
+    local total=$(grep '"total":' "$ledger_file" 2>/dev/null | sed 's/.*"total": \([0-9]*\).*/\1/' || echo 0)
+    local successful=$(grep '"successful":' "$ledger_file" 2>/dev/null | sed 's/.*"successful": \([0-9]*\).*/\1/' || echo 0)
+    local failed=$(grep '"failed":' "$ledger_file" 2>/dev/null | sed 's/.*"failed": \([0-9]*\).*/\1/' || echo 0)
+    local total_duration=$(grep '"total_duration_seconds":' "$ledger_file" 2>/dev/null | sed 's/.*"total_duration_seconds": \([0-9]*\).*/\1/' || echo 0)
+    
+    # Start building summary section
+    cat << SUMMARY_HEADER
+
+---
+
+## Prompt Execution Summary
+
+**Execution Statistics:**
+- Total Prompts: ${total}
+- Successful: ✅ ${successful}
+- Failed: ❌ ${failed}
+- Total Duration: $(format_duration ${total_duration})
+- Telemetry Log: \`${log_file}\`
+
+### Execution Details
+
+| Prompt Name | Category | Status | Duration | Completed At |
+|-------------|----------|--------|----------|-------------|
+SUMMARY_HEADER
+    
+    # Parse JSON ledger and create table rows
+    # Use awk for more robust JSON parsing
+    awk '
+        /"prompt_name":/ {
+            gsub(/.*"prompt_name": "/, "");
+            gsub(/".*/, "");
+            prompt_name = $0;
+        }
+        /"category":/ {
+            gsub(/.*"category": "/, "");
+            gsub(/".*/, "");
+            category = $0;
+        }
+        /"status":/ {
+            gsub(/.*"status": "/, "");
+            gsub(/".*/, "");
+            status = $0;
+            if (status == "success") {
+                status_icon = "✅";
+            } else {
+                status_icon = "❌";
+            }
+        }
+        /"duration_seconds":/ {
+            gsub(/.*"duration_seconds": /, "");
+            gsub(/,.*/, "");
+            duration = $0;
+        }
+        /"end_time":/ {
+            gsub(/.*"end_time": "/, "");
+            gsub(/".*/, "");
+            # Extract just time portion (HH:MM:SS)
+            split($0, time_parts, "T");
+            if (length(time_parts) > 1) {
+                split(time_parts[2], time_only, "+");
+                split(time_only[1], hms, ":");
+                end_time = hms[1] ":" hms[2] ":" hms[3];
+            } else {
+                end_time = $0;
+            }
+        }
+        /"error":/ && !/"error": null/ {
+            gsub(/.*"error": "/, "");
+            gsub(/".*/, "");
+            # Truncate error to 50 chars
+            error = substr($0, 1, 50);
+            if (length($0) > 50) error = error "...";
+        }
+        /}/ {
+            if (prompt_name != "") {
+                # Format duration
+                if (duration < 60) {
+                    duration_str = duration "s";
+                } else if (duration < 3600) {
+                    minutes = int(duration / 60);
+                    seconds = duration % 60;
+                    duration_str = minutes "m " seconds "s";
+                } else {
+                    hours = int(duration / 3600);
+                    minutes = int((duration % 3600) / 60);
+                    duration_str = hours "h " minutes "m";
+                }
+                
+                printf "| %s | %s | %s | %s | %s |\n", prompt_name, category, status_icon, duration_str, end_time;
+                
+                # Reset for next entry
+                prompt_name = "";
+                category = "";
+                status = "";
+                duration = 0;
+                end_time = "";
+                error = "";
+            }
+        }
+    ' "$ledger_file"
+    
+    # Add failure details if any
+    if [ "$failed" -gt 0 ]; then
+        cat << FAILURE_SECTION
+
+### Failed Prompts Details
+
+The following prompts encountered errors during execution:
+
+FAILURE_SECTION
+        
+        # Extract and display failure details
+        grep -A 10 '"status": "failure"' "$ledger_file" | awk '
+            /"prompt_name":/ {
+                gsub(/.*"prompt_name": "/, "");
+                gsub(/".*/, "");
+                prompt_name = $0;
+            }
+            /"error":/ && !/"error": null/ {
+                gsub(/.*"error": "/, "");
+                gsub(/".*/, "");
+                error = $0;
+                if (prompt_name != "") {
+                    printf "**%s:**\n\n", prompt_name;
+                    printf "%s\n\n", error;
+                    prompt_name = "";
+                }
+            }
+        '
+        
+        echo "For detailed error information, review the telemetry log at:"
+        echo "\`${log_file}\`"
+    fi
+    
+    echo ""
+}
 
 # Step 1: Combine all findings into a single document for AI analysis
 echo "📊 Collecting findings from $(ls -1 "$INPUT_DIR"/*.md 2>/dev/null | wc -l | xargs) research domains..."
@@ -160,6 +311,9 @@ REPORT_HEADER
 
 # Append synthesized content
 cat "$SYNTHESIZED_REPORT" >> "$REPORT_FILE"
+
+# Add execution summary before footer
+generate_execution_summary "$DATE" >> "$REPORT_FILE"
 
 # Add footer with metadata
 cat >> "$REPORT_FILE" << 'REPORT_FOOTER'

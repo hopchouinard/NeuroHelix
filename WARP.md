@@ -81,11 +81,144 @@ tail -100 logs/orchestrator_*.log
 # View most recent log
 tail -f $(ls -t logs/orchestrator_*.log | head -1)
 
+# View today's telemetry log
+tail -f logs/prompt_execution_$(date +%Y-%m-%d).log
+
+# View execution ledger (JSON)
+cat data/runtime/execution_ledger_$(date +%Y-%m-%d).json | python3 -m json.tool
+
 # Test Gemini CLI directly
 gemini --model gemini-2.5-flash "test prompt"
 
 # Enable debug mode (edit config/env.sh)
 export GEMINI_DEBUG="true"
+```
+
+### Telemetry & Monitoring
+
+**NeuroHelix now includes comprehensive telemetry logging for all prompt executions.**
+
+#### Telemetry Files
+
+1. **Daily Execution Logs**: `logs/prompt_execution_YYYY-MM-DD.log`
+   - Human-readable structured log file
+   - Records START and END events for each prompt
+   - Includes timestamps, durations, status, and error messages
+
+2. **Execution Ledgers**: `data/runtime/execution_ledger_YYYY-MM-DD.json`
+   - Machine-readable JSON format
+   - Complete execution metadata for all prompts
+   - Used for report generation and failure notifications
+
+#### Telemetry Log Format
+
+```
+[2025-11-08T07:00:01+0000] START | AI Ecosystem Watch | Research | Research
+[2025-11-08T07:00:15+0000] END | AI Ecosystem Watch | Research | success | 14s
+[2025-11-08T07:00:16+0000] START | Tech Regulation Pulse | Research | Research
+[2025-11-08T07:00:42+0000] END | Tech Regulation Pulse | Research | failure | 26s | Error: API timeout
+```
+
+#### JSON Ledger Schema
+
+```json
+{
+  "date": "2025-11-08",
+  "initialized_at": "2025-11-08T07:00:00+0000",
+  "executions": [
+    {
+      "prompt_id": "ai_ecosystem_watch",
+      "prompt_name": "AI Ecosystem Watch",
+      "category": "Research",
+      "stage": "Research",
+      "start_time": "2025-11-08T07:00:01+0000",
+      "end_time": "2025-11-08T07:00:15+0000",
+      "duration_seconds": 14,
+      "status": "success",
+      "error": null,
+      "output_file": "data/outputs/daily/2025-11-08/ai_ecosystem_watch.md"
+    }
+  ],
+  "summary": {
+    "total": 20,
+    "successful": 19,
+    "failed": 1,
+    "total_duration_seconds": 127
+  }
+}
+```
+
+#### Viewing Telemetry
+
+```bash
+# View today's execution summary
+grep "SUMMARY" logs/prompt_execution_$(date +%Y-%m-%d).log
+
+# Check for failures
+grep "failure" logs/prompt_execution_$(date +%Y-%m-%d).log
+
+# Extract execution statistics from ledger
+grep -A 5 '"summary"' data/runtime/execution_ledger_$(date +%Y-%m-%d).json
+
+# View all failed prompts
+jq '.executions[] | select(.status == "failure") | {prompt_name, error}' \
+  data/runtime/execution_ledger_$(date +%Y-%m-%d).json
+```
+
+### Failure Handling
+
+**The pipeline now implements non-blocking failure handling with automatic email notifications.**
+
+#### Non-Blocking Behavior
+
+- **Execution continues**: If a prompt fails, remaining prompts still execute
+- **Parallel isolation**: In parallel mode, one failure doesn't affect other jobs
+- **Completion tracking**: Partial completion is marked even with failures
+- **Full visibility**: All failures are logged and reported
+
+#### Email Notifications
+
+**Configuration** (`config/env.sh`):
+```bash
+export ENABLE_FAILURE_NOTIFICATIONS="true"
+export FAILURE_NOTIFICATION_EMAIL="chouinpa@gmail.com"
+```
+
+**Notification Behavior:**
+- Sent at end of execution run (batched)
+- Only sent if failures occurred
+- Non-fatal (won't block pipeline if email fails)
+- Includes retry logic (3 attempts, 5-second delays)
+
+**Email Content:**
+- Subject: `NeuroHelix Pipeline Failures - YYYY-MM-DD`
+- Summary of all failed prompts
+- Error messages and timestamps
+- Links to telemetry logs
+- Rerun and troubleshooting instructions
+
+#### Report Integration
+
+Daily reports now include a "Prompt Execution Summary" section with:
+- Execution statistics (total, successful, failed, duration)
+- Detailed table of all prompts with status and timing
+- Failed prompt details with error messages
+- Link to telemetry log file
+
+#### Rerunning After Failures
+
+```bash
+# Option 1: Delete completion marker and rerun everything
+rm data/outputs/daily/$(date +%Y-%m-%d)/.execution_complete
+./scripts/orchestrator.sh
+
+# Option 2: Disable failing prompt and rerun
+nano config/searches.tsv  # Set enabled=false for problematic prompt
+./scripts/orchestrator.sh
+
+# Option 3: Rerun just the executor step
+rm data/outputs/daily/$(date +%Y-%m-%d)/.execution_complete
+./scripts/executors/run_prompts.sh
 ```
 
 ### Configuration
@@ -251,7 +384,7 @@ This is **not** simple concatenation—it's AI-powered synthesis.
 
 ### Test Scripts
 
-The `tests/` directory contains two testing scripts:
+The `tests/` directory contains four testing scripts:
 
 **1. Simple Gemini CLI Test (`tests/test_single_prompt.sh`):**
 - Tests basic Gemini CLI connectivity
@@ -265,6 +398,23 @@ The `tests/` directory contains two testing scripts:
 - Checks historical reports for Continuity Builder
 - Validates system structure for Meta-Project Explorer
 - Does NOT execute actual prompts (setup validation only)
+
+**3. Telemetry Testing (`tests/test_telemetry.sh`):**
+- Validates telemetry logging library functions
+- Tests log file creation and format
+- Verifies JSON ledger structure and schema
+- Tests ISO8601 timestamp formatting (macOS BSD date compatible)
+- Validates duration calculation and summary statistics
+- Runs 14 comprehensive tests on telemetry system
+
+**4. Failure Handling Test (`tests/test_prompt_failure.sh`):**
+- Integration test for non-blocking failure behavior
+- Creates test configuration with mix of success/failure prompts
+- Verifies pipeline continues execution despite failures
+- Tests telemetry logging of failures
+- Validates JSON ledger failure tracking
+- Tests email notification system (dry run)
+- Runs 8 integration tests on failure handling
 
 ### Development Workflow
 
@@ -349,6 +499,114 @@ The notification stage (Step 4 of pipeline) is **disabled by default**. To enabl
 3. Manually test: `launchctl start com.neurohelix.daily`
 4. Verify plist permissions: `ls -l ~/Library/LaunchAgents/com.neurohelix.daily.plist`
 
+### Email Notifications Not Sending
+
+1. **Check mail command is configured:**
+   ```bash
+   which mail
+   echo "Test" | mail -s "Test" your@email.com
+   ```
+
+2. **Verify failure notification settings:**
+   ```bash
+   grep ENABLE_FAILURE_NOTIFICATIONS config/env.sh
+   grep FAILURE_NOTIFICATION_EMAIL config/env.sh
+   ```
+
+3. **Check if failures occurred:**
+   ```bash
+   grep "failed" data/runtime/execution_ledger_$(date +%Y-%m-%d).json
+   ```
+
+4. **Test notification script directly:**
+   ```bash
+   ./scripts/notifiers/notify_failures.sh
+   ```
+
+5. **macOS mail setup:**
+   - Configure Mail.app with your email account
+   - Test with: `echo "Test body" | mail -s "Test Subject" your@email.com`
+   - Check System Preferences → Internet Accounts
+
+### Telemetry Log Missing or Incomplete
+
+1. **Verify telemetry directory exists:**
+   ```bash
+   ls -ld data/runtime logs
+   ```
+
+2. **Check for initialization errors:**
+   ```bash
+   grep "telemetry" logs/orchestrator_*.log | tail -20
+   ```
+
+3. **Verify telemetry library is sourced:**
+   ```bash
+   grep "telemetry.sh" scripts/executors/run_prompts.sh
+   ```
+
+4. **Test telemetry functions:**
+   ```bash
+   ./tests/test_telemetry.sh
+   ```
+
+### Malformed JSON in Execution Ledger
+
+1. **Validate JSON structure:**
+   ```bash
+   python3 -c "import json; json.load(open('data/runtime/execution_ledger_$(date +%Y-%m-%d).json'))"
+   # Or use jq
+   jq empty data/runtime/execution_ledger_$(date +%Y-%m-%d).json
+   ```
+
+2. **Check for incomplete entries:**
+   ```bash
+   cat data/runtime/execution_ledger_$(date +%Y-%m-%d).json | grep -c '"prompt_id"'
+   ```
+
+3. **Regenerate ledger:**
+   ```bash
+   rm data/runtime/execution_ledger_$(date +%Y-%m-%d).json
+   rm data/outputs/daily/$(date +%Y-%m-%d)/.execution_complete
+   ./scripts/executors/run_prompts.sh
+   ```
+
+### Pipeline Continues After Failures (Expected Behavior)
+
+**This is normal!** The pipeline is designed to be non-blocking:
+
+- Individual prompt failures don't stop execution
+- All prompts run to completion
+- Failures are logged and reported
+- Email notifications are sent at the end
+
+To stop this behavior, you would need to:
+1. Re-add `set -e` to `scripts/executors/run_prompts.sh` (not recommended)
+2. Remove `|| true` from prompt execution calls (not recommended)
+
+### Execution Summary Not in Report
+
+1. **Check if aggregator sources telemetry library:**
+   ```bash
+   grep "telemetry.sh" scripts/aggregators/aggregate_daily.sh
+   ```
+
+2. **Verify ledger exists before aggregation:**
+   ```bash
+   ls -lh data/runtime/execution_ledger_$(date +%Y-%m-%d).json
+   ```
+
+3. **Regenerate report:**
+   ```bash
+   rm data/reports/daily_report_$(date +%Y-%m-%d).md
+   ./scripts/aggregators/aggregate_daily.sh
+   ```
+
+4. **Check for generate_execution_summary function:**
+   ```bash
+   grep -A 5 "generate_execution_summary" scripts/aggregators/aggregate_daily.sh
+   ```
+
 ## Project Structure
 
 ```
@@ -361,13 +619,15 @@ NeuroHelix/
 │   ├── executors/       # Prompt execution (run_prompts.sh)
 │   ├── aggregators/     # Synthesis (aggregate_daily.sh)
 │   ├── renderers/       # Dashboard generation (generate_dashboard.sh)
-│   ├── notifiers/       # Notifications (notify.sh)
+│   ├── notifiers/       # Notifications (notify.sh, notify_failures.sh)
+│   ├── lib/             # Shared libraries (telemetry.sh)
 │   └── meta/            # Future meta-automation scripts
 ├── data/                # Generated data
 │   ├── outputs/daily/   # Raw prompt outputs (by date)
-│   └── reports/         # Synthesized daily reports
+│   ├── reports/         # Synthesized daily reports
+│   └── runtime/         # Execution ledgers (JSON)
 ├── dashboards/          # HTML dashboards
-├── logs/                # Execution logs
+├── logs/                # Execution logs + telemetry logs
 ├── launchd/             # LaunchD configuration template
 ├── templates/           # Reusable templates
 ├── tests/               # Test scripts

@@ -28,6 +28,14 @@ log "📝 Step 2: Aggregating results..."
 log "🏷️  Step 2.5: Extracting tags and categories..."
 "${PROJECT_ROOT}/scripts/aggregators/extract_tags.sh" 2>&1 | tee -a "$LOG_FILE"
 
+# Step 2.75: Check for failures and send notifications
+if [ "${ENABLE_FAILURE_NOTIFICATIONS:-false}" = "true" ]; then
+    log "📧 Step 2.75: Checking for prompt failures and sending notifications..."
+    "${PROJECT_ROOT}/scripts/notifiers/notify_failures.sh" 2>&1 | tee -a "$LOG_FILE" || true
+else
+    log "⏭️  Step 2.75: Failure notifications disabled"
+fi
+
 # Step 3: Generate dashboard
 log "🎨 Step 3: Generating dashboard..."
 "${PROJECT_ROOT}/scripts/renderers/generate_dashboard.sh" 2>&1 | tee -a "$LOG_FILE"
