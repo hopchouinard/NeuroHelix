@@ -271,7 +271,7 @@ export ENABLE_STATIC_SITE_PUBLISHING="true"
 
 # Static Site Publishing
 export CLOUDFLARE_PROJECT_NAME="neurohelix-site"
-export CLOUDFLARE_PRODUCTION_DOMAIN="neurohelix.patchoutech.com"
+export CLOUDFLARE_PRODUCTION_DOMAIN="neurohelix.userdomain.com"
 ```
 
 #### Automation Schedule (`launchd/com.neurohelix.daily.plist`)

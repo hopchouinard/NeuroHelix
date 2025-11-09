@@ -7,6 +7,8 @@ data/outputs/
 data/corpus/
 data/reports/
 data/publishing/
+data/runtime/
+data/reports/
 
 # Dashboards (generated, can be excluded)
 dashboards/*.html
