@@ -57,40 +57,55 @@ else
     CATEGORIES="[]"
 fi
 
-# Extract thematic sections (all ### headings except specific metadata sections)
+# Extract thematic sections (specific h3 sections only)
+# We want: Model & Technology Advances, Market Dynamics, Regulatory, Developer Tools, Hardware
+# We skip: Executive Summary, Key Themes, Notable Developments, Strategic Implications, Recommendations, Prompt Execution Summary
 SECTIONS=$(awk '
-    BEGIN { 
+    BEGIN {
         in_section = 0
         section_heading = ""
         section_content = ""
         first = 1
+
+        # Define sections to skip (metadata sections)
+        skip["Executive Summary"] = 1
+        skip["Key Themes & Insights"] = 1
+        skip["Notable Developments"] = 1
+        skip["Strategic Implications"] = 1
+        skip["Actionable Recommendations"] = 1
+        skip["Prompt Execution Summary"] = 1
+        skip["Failed Prompts Details"] = 1
     }
-    /^### Thematic Sections$/ { next }
-    /^### Executive Summary$/ { next }
-    /^### Key Themes & Insights$/ { next }
-    /^---$/ && /^### Notable Developments$/ { next }
-    /^---$/ && /^### Strategic Implications$/ { next }
-    /^---$/ && /^### Actionable Recommendations$/ { next }
     /^## Report Metadata$/ { exit }
+    /^## Prompt Execution Summary$/ { exit }
+    /^## End of Report$/ { exit }
+    /^---$/ { next }
     /^### / {
-        if (in_section && section_heading != "") {
+        # Extract heading text
+        heading = substr($0, 5)
+
+        # If we were in a section, save it (unless it was skipped)
+        if (in_section && section_heading != "" && !(section_heading in skip)) {
             gsub(/"/, "\\\"", section_content)
             gsub(/\n/, " ", section_content)
             if (!first) printf ","
             printf "{\"heading\":\"%s\",\"content\":\"%s\"}", section_heading, section_content
             first = 0
         }
-        section_heading = substr($0, 5)
+
+        # Start new section
+        section_heading = heading
         section_content = ""
         in_section = 1
         next
     }
-    in_section && NF {
+    in_section && NF && !/^#/ {
         if (section_content != "") section_content = section_content " "
         section_content = section_content $0
     }
     END {
-        if (in_section && section_heading != "") {
+        # Save final section if not skipped
+        if (in_section && section_heading != "" && !(section_heading in skip)) {
             gsub(/"/, "\\\"", section_content)
             gsub(/\n/, " ", section_content)
             if (!first) printf ","

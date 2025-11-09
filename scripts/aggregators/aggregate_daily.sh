@@ -212,68 +212,80 @@ echo "🧠 Creating synthesis prompt..."
 cat > "$SYNTHESIS_PROMPT_FILE" << 'SYNTHESIS_PROMPT'
 You are an expert research analyst synthesizing today's AI and technology research findings.
 
-Your task is to analyze ALL the research findings below and create a comprehensive, well-structured daily report that:
+Your task is to analyze ALL the research findings below and create a comprehensive, well-structured daily report.
+
+**CRITICAL: You MUST use this EXACT markdown structure. Do not deviate from this heading hierarchy:**
+
+```
+### Executive Summary
+
+[200-300 words identifying 3-5 most significant developments, emerging patterns, cross-domain connections, and strategic implications]
+
+### Key Themes & Insights
+
+[Brief overview paragraph with key insights, organized by theme NOT by source]
+
+### Model & Technology Advances
+
+[Content about AI models, research breakthroughs, technical capabilities]
+
+### Market Dynamics & Business Strategy
+
+[Content about investments, partnerships, acquisitions, competitive moves]
+
+### Regulatory & Policy Developments
+
+[Content about laws, governance, policy statements, regulatory changes]
+
+### Developer Tools & Ecosystem
+
+[Content about coding tools, frameworks, platforms, developer experience]
+
+### Hardware & Compute Landscape
+
+[Content about GPUs, TPUs, compute infrastructure, edge devices]
+
+### Notable Developments
+
+* [Specific announcement 1 with concrete details]
+* [Specific announcement 2 with concrete details]
+* [Specific announcement 3 with concrete details]
+* [5-10 total items, prioritizing novelty and impact]
+
+### Strategic Implications
+
+[Analysis of what these developments mean for AI developers, enterprise adoption, competitive landscape, and future research directions]
+
+### Actionable Recommendations
+
+1. [Specific action based on today's findings]
+2. [Opportunity to explore]
+3. [Risk to monitor]
+4. [3-5 total items]
+```
 
 **REQUIREMENTS:**
 
-1. **Executive Summary** (200-300 words)
-   - Identify the 3-5 most significant developments
-   - Highlight emerging patterns and trends
-   - Surface unexpected connections between different domains
-   - Provide strategic implications
+1. **Use ONLY h3 headings (###)** - Never use h2 (##) or h4 (####) for main sections
+2. **Keep the exact section names** - "Model & Technology Advances", "Market Dynamics & Business Strategy", etc.
+3. **Executive Summary** must be 200-300 words
+4. **Notable Developments** must be a bullet list (not numbered)
+5. **Actionable Recommendations** must be a numbered list
+6. Synthesize across domains - do not list by source
+7. Remove redundancy - many domains mention the same events
+8. Prioritize signal over noise
+9. Cite specific sources when referencing concrete facts
+10. Maintain analytical, objective tone - no marketing hype
 
-2. **Key Themes & Insights** (organized by theme, NOT by source)
-   - Group related findings across different research domains
-   - Identify cross-domain patterns (e.g., regulation + tech development)
-   - Highlight contradictions or tensions
-   - Surface non-obvious connections
+**FORMATTING:**
 
-3. **Thematic Sections** (create 4-6 sections based on natural themes in the data)
-   - Model & Technology Advances
-   - Market Dynamics & Business Strategy  
-   - Regulatory & Policy Developments
-   - Developer Tools & Ecosystem
-   - Research & Academic Progress
-   - (Add other themes as needed based on findings)
+- Use **bold** for emphasis on key terms
+- Use > blockquotes for especially important insights
+- Use bullet points (*) for Notable Developments
+- Use numbered lists (1., 2., 3.) for Actionable Recommendations
+- Keep paragraphs concise and scannable
 
-4. **Notable Developments** (bullet list)
-   - Highlight 5-10 specific announcements/releases
-   - Include concrete details (names, versions, companies)
-   - Prioritize novelty and impact
-
-5. **Strategic Implications**
-   - What do these developments mean for:
-     - AI application developers
-     - Enterprise adoption
-     - Competitive landscape
-     - Future research directions
-
-6. **Actionable Recommendations** (3-5 specific actions)
-   - Concrete next steps based on today's findings
-   - Opportunities to explore
-   - Risks to monitor
-
-**CRITICAL INSTRUCTIONS:**
-
-- DO NOT simply list findings by domain
-- DO synthesize and connect information across domains
-- DO remove redundancy (many domains may mention the same development)
-- DO prioritize signal over noise
-- DO use clear headings and structure
-- DO cite specific sources when mentioning concrete facts
-- DO NOT use marketing language or hype
-- DO maintain analytical, objective tone
-
-**FORMAT:**
-
-Use clean Markdown with:
-- ## for main sections
-- ### for subsections  
-- **bold** for emphasis
-- Bullet points for lists
-- > blockquotes for key insights
-
-Now analyze the following research findings:
+Now analyze the following research findings and generate the report using the EXACT structure above:
 
 ---
 

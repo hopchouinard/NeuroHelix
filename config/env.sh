@@ -12,7 +12,7 @@ export RUNTIME_DIR="${DATA_DIR}/runtime"
 
 # CLI tools
 export GEMINI_CLI="gemini"
-export COPILOT_CLI="gh copilot"
+export COPILOT_CLI="copilot"
 
 # Gemini CLI settings
 export GEMINI_MODEL="gemini-2.5-flash"  # Default model
@@ -22,13 +22,13 @@ export GEMINI_YOLO_MODE="true"  # Auto-approve all actions
 export GEMINI_DEBUG="false"  # Debug mode
 
 # Feature flags
-export ENABLE_NOTIFICATIONS="false"
-export ENABLE_META_AUTOMATION="false"
+export ENABLE_NOTIFICATIONS="true"
+export ENABLE_META_AUTOMATION="true"
 export PARALLEL_EXECUTION="true"
 export MAX_PARALLEL_JOBS="4"
 
 # Notification settings (if enabled)
-export NOTIFICATION_EMAIL=""
+export NOTIFICATION_EMAIL="chouinpa@gmail.com"
 export DISCORD_WEBHOOK_URL=""
 
 # Failure notification settings
