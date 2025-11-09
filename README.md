@@ -397,7 +397,7 @@ Force reprocessing of the current day's pipeline by deleting today's data and re
 ```bash
 # Execution logs show:
 RUN_MODE=manual_override
-MANUAL_OVERRIDE_OPERATOR=pchouinard
+MANUAL_OVERRIDE_OPERATOR=username
 MANUAL_OVERRIDE_REASON=force reprocess
 ```
 
@@ -427,7 +427,7 @@ All maintenance operations create comprehensive audit records:
 ```
 [2025-11-09 10:29:04] 🧹 NeuroHelix Workspace Cleanup
 [2025-11-09 10:29:04] ================================
-[2025-11-09 10:29:04] Operator: pchouinard
+[2025-11-09 10:29:04] Operator: username
 [2025-11-09 10:29:04] Timestamp: Sun Nov  9 10:29:04 EST 2025
 [2025-11-09 10:29:04] Dry run: false
 [2025-11-09 10:29:04] ✅ Git working tree is clean
@@ -436,8 +436,8 @@ All maintenance operations create comprehensive audit records:
 
 **JSONL Audit:** `data/runtime/audit.jsonl`
 ```json
-{"action":"cleanup_all","operator":"pchouinard","timestamp":"2025-11-09T15:29:05Z","dry_run":false,"git_status":"clean","target_paths":[...],"cloudflare_deploy_id":"abc123"}
-{"action":"reprocess_today","operator":"pchouinard","date":"2025-11-09","timestamp":"2025-11-09T15:45:12Z","dry_run":false,"manual_override":true,"lock_behavior":"clean","pipeline_duration_seconds":324,"deploy_id":"xyz789"}
+{"action":"cleanup_all","operator":"username","timestamp":"2025-11-09T15:29:05Z","dry_run":false,"git_status":"clean","target_paths":[...],"cloudflare_deploy_id":"abc123"}
+{"action":"reprocess_today","operator":"username","date":"2025-11-09","timestamp":"2025-11-09T15:45:12Z","dry_run":false,"manual_override":true,"lock_behavior":"clean","pipeline_duration_seconds":324,"deploy_id":"xyz789"}
 ```
 
 #### LaunchD Protection

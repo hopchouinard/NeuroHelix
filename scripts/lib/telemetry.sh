@@ -70,6 +70,43 @@ format_iso8601() {
     date -u +"%Y-%m-%dT%H:%M:%S%z" 2>/dev/null || date -u +"%Y-%m-%dT%H:%M:%SZ"
 }
 
+# Sanitize path to be relative to PROJECT_ROOT for security
+# Prevents leaking local filesystem structure and username
+# Usage: sanitize_path <absolute_or_relative_path>
+# Returns: path relative to PROJECT_ROOT or original if not under PROJECT_ROOT
+sanitize_path() {
+    local path="$1"
+
+    # If path is empty, return empty
+    if [ -z "$path" ]; then
+        echo ""
+        return 0
+    fi
+
+    # If path is already relative (doesn't start with /), return as-is
+    if [[ "$path" != /* ]]; then
+        echo "$path"
+        return 0
+    fi
+
+    # If PROJECT_ROOT is not set, return basename only for safety
+    if [ -z "${PROJECT_ROOT:-}" ]; then
+        /usr/bin/basename "$path"
+        return 0
+    fi
+
+    # Remove PROJECT_ROOT prefix if path starts with it
+    if [[ "$path" == "$PROJECT_ROOT"* ]]; then
+        # Remove PROJECT_ROOT and leading slash
+        local relative="${path#$PROJECT_ROOT}"
+        relative="${relative#/}"
+        echo "$relative"
+    else
+        # Path is outside PROJECT_ROOT - return basename only for safety
+        /usr/bin/basename "$path"
+    fi
+}
+
 # Calculate duration in seconds between two ISO8601 timestamps
 calculate_duration() {
     local start_time="$1"
@@ -154,17 +191,20 @@ add_to_ledger() {
     local exec_status="$6"
     local output_file="${7:-}"
     local error="${8:-}"
-    
+
     # Safe prompt ID
     local prompt_id=$(echo "$prompt_name" | tr ' ' '_' | tr '[:upper:]' '[:lower:]')
-    
+
+    # Sanitize output file path to be relative to PROJECT_ROOT (security)
+    local sanitized_output_file=$(sanitize_path "$output_file")
+
     # Calculate duration
     local duration=$(calculate_duration "$start_time" "$end_time")
-    
+
     if [ ! -f "$EXECUTION_LEDGER_FILE" ]; then
         return 1
     fi
-    
+
     # Use Python for reliable JSON manipulation
     python3 -c "
 import json
@@ -174,12 +214,12 @@ try:
     # Read existing ledger
     with open('$EXECUTION_LEDGER_FILE', 'r') as f:
         ledger = json.load(f)
-    
+
     # Create new entry
     error_value = None
     if '$exec_status' == 'failure' and '$error':
         error_value = '''$error'''.strip()[:200]
-    
+
     entry = {
         'prompt_id': '$prompt_id',
         'prompt_name': '''$prompt_name''',
@@ -190,17 +230,17 @@ try:
         'duration_seconds': $duration,
         'status': '$exec_status',
         'error': error_value,
-        'output_file': '$output_file'
+        'output_file': '$sanitized_output_file'
     }
-    
+
     # Append to executions
     ledger['executions'].append(entry)
-    
+
     # Write back with proper formatting
     with open('$EXECUTION_LEDGER_FILE', 'w') as f:
         json.dump(ledger, f, indent=2)
         f.write('\\n')
-        
+
 except Exception as e:
     sys.stderr.write(f'Error adding to ledger: {e}\\n')
     sys.exit(1)

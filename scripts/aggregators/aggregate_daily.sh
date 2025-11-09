@@ -47,6 +47,9 @@ generate_execution_summary() {
     local failed=$(grep '"failed":' "$ledger_file" 2>/dev/null | sed 's/.*"failed": \([0-9]*\).*/\1/' || echo 0)
     local total_duration=$(grep '"total_duration_seconds":' "$ledger_file" 2>/dev/null | sed 's/.*"total_duration_seconds": \([0-9]*\).*/\1/' || echo 0)
     
+    # Sanitize log file path for security (no absolute paths in published content)
+    local sanitized_log_file=$(sanitize_path "${log_file}")
+
     # Start building summary section
     cat << SUMMARY_HEADER
 
@@ -59,7 +62,7 @@ generate_execution_summary() {
 - Successful: ✅ ${successful}
 - Failed: ❌ ${failed}
 - Total Duration: $(format_duration ${total_duration})
-- Telemetry Log: \`${log_file}\`
+- Telemetry Log: \`${sanitized_log_file}\`
 
 ### Execution Details
 
@@ -171,11 +174,11 @@ FAILURE_SECTION
                 }
             }
         '
-        
+
         echo "For detailed error information, review the telemetry log at:"
-        echo "\`${log_file}\`"
+        echo "\`${sanitized_log_file}\`"
     fi
-    
+
     echo ""
 }
 
