@@ -566,7 +566,7 @@ Today's research reveals three major technological shifts:
 ## End of Report
 ```
 
-#### Static Site ([neurohelix.patchoutech.com](https://neurohelix.patchoutech.com))
+#### Static Site ([neurohelix.userdomain.com](https://neurohelix.userdomain.com))
 - Interactive dashboard gallery with search
 - Tag cloud with frequency-based weighting
 - Category filtering (Research, Market, Ideation, Analysis, Meta)

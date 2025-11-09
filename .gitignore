@@ -17,6 +17,7 @@ config/env.local.sh
 .env
 .env.local
 .env.*
+env.sh
 
 # System files
 .DS_Store
