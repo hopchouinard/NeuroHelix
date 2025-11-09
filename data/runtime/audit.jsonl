@@ -1,0 +1,4 @@
+{"action":"cleanup_all","operator":"pchouinard","timestamp":"2025-11-09T15:29:05Z","dry_run":true,"git_status":"dirty","target_paths":["data/outputs/daily","data/reports","data/publishing","data/runtime","dashboards","logs/prompt_execution_*.log","logs/orchestrator_*.log","logs/publishing","site/public/search-index.json","site/src/content/dashboards","site/src/data/tags.json","site/src/data/tag-frequencies.json","site/src/data/categories.json","site/src/data/stats.json"],"cloudflare_deploy_id":"[2025-11-09 10:29:05] 🌐 Cloudflare Pages deployment retraction...
+[2025-11-09 10:29:05] ⚠️  Warning: CLOUDFLARE_API_TOKEN not set
+[2025-11-09 10:29:05]    Skipping Cloudflare deployment retraction"}
+{"action":"reprocess_today","operator":"pchouinard","date":"2025-11-09","timestamp":"2025-11-09T15:29:24Z","dry_run":true,"manual_override":true,"lock_behavior":"clean","pipeline_duration_seconds":0,"deploy_id":"null"}

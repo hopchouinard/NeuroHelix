@@ -16,17 +16,20 @@ Every morning, wake up to an intelligent synthesis dashboard published to your c
 
 ### ✨ Key Features
 
-✅ **22 Curated Research Prompts** - 5 categories (Research, Market, Ideation, Analysis, Meta)  
-✅ **Intelligent Synthesis** - Cross-domain thematic analysis with AI-powered insights  
-✅ **Full Idempotency** - Re-runs complete in <1 second, safe for repeated execution  
-✅ **Context-Aware Prompts** - Historical analysis, temporal awareness, structured references  
-✅ **LaunchD Automation** - Daily scheduling at 7 AM (customizable)  
-✅ **Static Site Publishing** - Modern Astro-based site deployed to Cloudflare Pages  
-✅ **Full-Text Search** - MiniSearch-powered client-side search with fuzzy matching  
-✅ **Tag & Category Filtering** - Smart filtering with tag cloud and category pills  
-✅ **Automated Tag Extraction** - AI-generated tags and categories from daily reports  
-✅ **Beautiful Design** - Dark theme with electric violet accents, GitHub-style markdown  
-✅ **Comprehensive Logging** - Detailed execution traces and deployment logs  
+✅ **22 Curated Research Prompts** - 5 categories (Research, Market, Ideation, Analysis, Meta)
+✅ **Intelligent Synthesis** - Cross-domain thematic analysis with AI-powered insights
+✅ **Full Idempotency** - Re-runs complete in <1 second, safe for repeated execution
+✅ **Context-Aware Prompts** - Historical analysis, temporal awareness, structured references
+✅ **LaunchD Automation** - Daily scheduling at 7 AM (customizable)
+✅ **Static Site Publishing** - Modern Astro-based site deployed to Cloudflare Pages
+✅ **Full-Text Search** - MiniSearch-powered client-side search with fuzzy matching
+✅ **Tag & Category Filtering** - Smart filtering with tag cloud and category pills
+✅ **Automated Tag Extraction** - AI-generated tags and categories from daily reports
+✅ **Beautiful Design** - Dark theme with electric violet accents, GitHub-style markdown
+✅ **Comprehensive Logging** - Detailed execution traces and deployment logs
+✅ **Maintenance Operations** - Workspace cleanup and force reprocess with audit trail
+✅ **Pipeline Locking** - Safe concurrent execution prevention with graceful termination
+✅ **Git Safety Checks** - Prevents destructive operations on dirty working trees  
 
 ### 📁 Project Structure
 
@@ -37,6 +40,7 @@ NeuroHelix/
 │   └── searches.tsv        # 22 research prompts (5 categories)
 ├── scripts/
 │   ├── orchestrator.sh     # Main pipeline coordinator (6-step process)
+│   ├── lib/                # Shared libraries (audit, cleanup, git safety, etc.)
 │   ├── executors/          # Prompt execution with context injection
 │   ├── aggregators/        # Intelligent synthesis + tag extraction
 │   ├── renderers/          # Dashboard generation + JSON export
@@ -52,9 +56,12 @@ NeuroHelix/
 │   ├── outputs/daily/      # Raw prompt outputs (by date)
 │   ├── reports/            # Daily synthesized markdown reports
 │   ├── publishing/         # JSON payloads for static site
-│   └── runtime/            # Execution ledgers
+│   └── runtime/            # Execution ledgers + audit trail (audit.jsonl)
 ├── dashboards/             # Legacy HTML dashboards
-├── logs/                   # Execution logs + publishing logs
+├── logs/
+│   ├── maintenance/        # Cleanup & reprocess operation logs
+│   ├── publishing/         # Cloudflare deployment logs
+│   └── *.log               # Execution logs (orchestrator, prompt execution)
 ├── docs/                   # Setup guides and documentation
 └── install_automation.sh   # LaunchD installer script
 ```
@@ -72,7 +79,7 @@ NeuroHelix/
    ```bash
    ./scripts/orchestrator.sh
    ```
-   
+
    This runs the full 6-step pipeline:
    - Execute 22 research prompts
    - Aggregate results into daily report
@@ -80,6 +87,14 @@ NeuroHelix/
    - Generate HTML dashboard
    - Export JSON payload
    - Publish to Cloudflare Pages (if configured)
+
+   **Maintenance operations:**
+   ```bash
+   ./scripts/orchestrator.sh --cleanup-all --dry-run      # Preview workspace cleanup
+   ./scripts/orchestrator.sh --reprocess-today --dry-run  # Preview force reprocess
+   ```
+
+   See [Maintenance Operations](#-maintenance-operations) for details.
 
 3. **View local results:**
    ```bash
@@ -271,6 +286,173 @@ export CLOUDFLARE_PRODUCTION_DOMAIN="neurohelix.patchoutech.com"
 </dict>
 ```
 
+### 🛠️ Maintenance Operations
+
+NeuroHelix includes powerful maintenance commands for workspace management and data reprocessing. These are **operator-only** commands (not invoked by LaunchD) designed for development, debugging, and recovery scenarios.
+
+#### Cleanup Mode (`--cleanup-all`)
+
+Performs a complete workspace reset by removing all generated artifacts while preserving configuration and source code.
+
+**What gets deleted:**
+- All daily outputs (`data/outputs/daily/`)
+- All reports (`data/reports/`)
+- All publishing data (`data/publishing/`)
+- All runtime ledgers (`data/runtime/`)
+- All dashboards (`dashboards/`)
+- All logs (`logs/*.log`, `logs/publishing/`)
+- Static site artifacts (`site/public/search-index.json`, `site/src/content/dashboards/`, etc.)
+
+**What gets preserved:**
+- All configuration (`config/`, `data/config/`)
+- All source code (`scripts/`, `site/src/`)
+- Documentation (`ai_docs/`, `docs/`)
+- LaunchD configurations (`launchd/`)
+- Git repository (`.git/`)
+
+**Usage:**
+
+```bash
+# Preview cleanup (dry-run mode)
+./scripts/orchestrator.sh --cleanup-all --dry-run
+
+# Execute cleanup with confirmation prompt
+./scripts/orchestrator.sh --cleanup-all
+
+# Skip confirmation (dangerous!)
+./scripts/orchestrator.sh --cleanup-all --yes
+
+# Allow cleanup with uncommitted git changes
+./scripts/orchestrator.sh --cleanup-all --allow-dirty
+
+# Alias syntax (same behavior)
+./scripts/orchestrator.sh --reset-workspace --dry-run
+```
+
+**Safety Features:**
+- ✅ **Git cleanliness check** - Requires clean working tree (bypass with `--allow-dirty`)
+- ✅ **Interactive confirmation** - Default "No" prompt (skip with `--yes`)
+- ✅ **Dry-run preview** - See exactly what will be deleted before execution
+- ✅ **Audit trail** - All operations logged to `logs/maintenance/cleanup_*.log` and `data/runtime/audit.jsonl`
+- ✅ **Cloudflare awareness** - Tracks latest deployment ID (note: Pages API doesn't support deletion)
+
+**After cleanup:**
+```bash
+# Generate fresh data
+./scripts/orchestrator.sh
+```
+
+#### Reprocess Mode (`--reprocess-today`)
+
+Force reprocessing of the current day's pipeline by deleting today's data and rerunning all 6 steps with manual override tagging.
+
+**What gets deleted (today only):**
+- Today's prompt outputs (`data/outputs/daily/YYYY-MM-DD/`)
+- Today's daily report (`data/reports/daily_report_YYYY-MM-DD.md`)
+- Today's publishing data (`data/publishing/YYYY-MM-DD.json`, tags)
+- Today's dashboard (`dashboards/dashboard_YYYY-MM-DD.html`)
+- Today's logs (`logs/*YYYY-MM-DD*.log`)
+- Today's execution ledger (`data/runtime/execution_ledger_YYYY-MM-DD.json`)
+
+**Pipeline steps executed:**
+1. Execute research prompts (22 prompts with context injection)
+2. Aggregate results (AI-powered synthesis)
+3. Extract tags and categories
+4. Generate dashboard (HTML)
+5. Export static site payload (JSON)
+6. Publish static site (Cloudflare Pages deployment)
+
+**Usage:**
+
+```bash
+# Preview reprocess (dry-run mode)
+./scripts/orchestrator.sh --reprocess-today --dry-run
+
+# Execute reprocess with confirmation prompt
+./scripts/orchestrator.sh --reprocess-today
+
+# Skip confirmation
+./scripts/orchestrator.sh --reprocess-today --yes
+
+# Terminate running pipeline if needed
+./scripts/orchestrator.sh --reprocess-today --allow-abort
+
+# Combine flags
+./scripts/orchestrator.sh --reprocess-today --yes --allow-dirty
+
+# Alias syntax (same behavior)
+./scripts/orchestrator.sh --force-today --dry-run
+```
+
+**Safety Features:**
+- ✅ **Pipeline locking** - Detects and blocks concurrent pipeline executions
+- ✅ **Safe termination** - `--allow-abort` gracefully terminates running pipeline (SIGTERM → SIGKILL)
+- ✅ **Git cleanliness check** - Requires clean working tree (bypass with `--allow-dirty`)
+- ✅ **Interactive confirmation** - Default "No" prompt (skip with `--yes`)
+- ✅ **Manual override tagging** - All logs/ledgers marked with operator and reason
+- ✅ **Audit trail** - Complete operation history in maintenance logs and audit.jsonl
+- ✅ **Idempotent** - Safe to run multiple times in one day
+
+**Manual override tagging:**
+```bash
+# Execution logs show:
+RUN_MODE=manual_override
+MANUAL_OVERRIDE_OPERATOR=pchouinard
+MANUAL_OVERRIDE_REASON=force reprocess
+```
+
+#### Available Flags
+
+| Flag | Description | Modes |
+|------|-------------|-------|
+| `--cleanup-all` | Full workspace cleanup | Cleanup |
+| `--reset-workspace` | Alias for `--cleanup-all` | Cleanup |
+| `--reprocess-today` | Force reprocess current day | Reprocess |
+| `--force-today` | Alias for `--reprocess-today` | Reprocess |
+| `--dry-run` | Preview without executing | Both |
+| `--yes` | Skip confirmation prompts | Both |
+| `--allow-dirty` | Bypass git cleanliness check | Both |
+| `--allow-abort` | Terminate running pipeline | Reprocess |
+
+**Flag combinations:**
+- ✅ `--cleanup-all --dry-run --allow-dirty` - Preview cleanup with dirty git tree
+- ✅ `--reprocess-today --yes --allow-abort` - Force reprocess, terminate existing run
+- ❌ `--cleanup-all --reprocess-today` - **ERROR:** Mutually exclusive
+
+#### Audit Trail
+
+All maintenance operations create comprehensive audit records:
+
+**Text Logs:** `logs/maintenance/{cleanup,reprocess}_YYYY-MM-DDTHHMMSS.log`
+```
+[2025-11-09 10:29:04] 🧹 NeuroHelix Workspace Cleanup
+[2025-11-09 10:29:04] ================================
+[2025-11-09 10:29:04] Operator: pchouinard
+[2025-11-09 10:29:04] Timestamp: Sun Nov  9 10:29:04 EST 2025
+[2025-11-09 10:29:04] Dry run: false
+[2025-11-09 10:29:04] ✅ Git working tree is clean
+...
+```
+
+**JSONL Audit:** `data/runtime/audit.jsonl`
+```json
+{"action":"cleanup_all","operator":"pchouinard","timestamp":"2025-11-09T15:29:05Z","dry_run":false,"git_status":"clean","target_paths":[...],"cloudflare_deploy_id":"abc123"}
+{"action":"reprocess_today","operator":"pchouinard","date":"2025-11-09","timestamp":"2025-11-09T15:45:12Z","dry_run":false,"manual_override":true,"lock_behavior":"clean","pipeline_duration_seconds":324,"deploy_id":"xyz789"}
+```
+
+#### LaunchD Protection
+
+Maintenance modes are **explicitly blocked** from LaunchD automation:
+
+```bash
+if [ "${MODE}" != "normal" ] && [ -n "${LAUNCHED_BY_LAUNCHD:-}" ]; then
+    echo "❌ Error: Maintenance modes cannot be invoked by LaunchD"
+    exit 1
+fi
+```
+
+These commands are **operator-only** and require manual terminal invocation.
+
 ### 🎨 Dashboard & Site Features
 
 #### Static Website (Primary)
@@ -305,6 +487,12 @@ export CLOUDFLARE_PRODUCTION_DOMAIN="neurohelix.patchoutech.com"
 8. **Static Site Build** - Astro ingestion, search index generation, and build
 9. **Cloudflare Deployment** - Automated publishing to production domain
 10. **Idempotent Re-runs** - Safe to execute multiple times (completes in <1s)
+
+**Manual Interventions:**
+- **Force Reprocess** - Use `--reprocess-today` to delete and regenerate today's data
+- **Workspace Cleanup** - Use `--cleanup-all` to reset entire workspace to clean state
+- **Pipeline Lock** - Automatic prevention of concurrent executions with safe termination
+- **Audit Trail** - All operations logged to `data/runtime/audit.jsonl` for accountability
 
 ### 🤖 Context-Aware Intelligence
 
@@ -409,45 +597,106 @@ For Linux users: Use cron instead of LaunchD. See `docs/automation-setup.md` for
 ### 📎 Management Commands
 
 ```bash
+# ============================================================================
+# Normal Pipeline Execution
+# ============================================================================
+
+# Manual execution (runs all 6 steps)
+./scripts/orchestrator.sh
+
+# Or via LaunchD
+launchctl start com.neurohelix.daily
+
+# ============================================================================
+# Maintenance Operations (Operator-Only)
+# ============================================================================
+
+# Cleanup - Remove all generated artifacts
+./scripts/orchestrator.sh --cleanup-all --dry-run      # Preview
+./scripts/orchestrator.sh --cleanup-all                # Execute with prompt
+./scripts/orchestrator.sh --cleanup-all --yes          # Execute without prompt
+
+# Reprocess - Force rerun today's pipeline
+./scripts/orchestrator.sh --reprocess-today --dry-run  # Preview
+./scripts/orchestrator.sh --reprocess-today            # Execute with prompt
+./scripts/orchestrator.sh --reprocess-today --yes      # Execute without prompt
+
+# Advanced flags
+./scripts/orchestrator.sh --cleanup-all --allow-dirty  # Bypass git check
+./scripts/orchestrator.sh --reprocess-today --allow-abort  # Terminate running pipeline
+
+# ============================================================================
+# Automation Management
+# ============================================================================
+
 # Check automation status
 launchctl list | grep neurohelix
 
-# Manual execution
-launchctl start com.neurohelix.daily
-
-# Or run directly
-./scripts/orchestrator.sh
-
-# View logs  
-tail -f logs/launchd_stdout.log
-tail -f logs/launchd_stderr.log
-
-# Check publishing logs
-tail -f logs/publishing/publish_*.log
+# Install/reinstall automation
+./install_automation.sh
 
 # Uninstall automation
 ./uninstall_automation.sh
+
+# ============================================================================
+# Logs & Monitoring
+# ============================================================================
+
+# View real-time logs
+tail -f logs/launchd_stdout.log
+tail -f logs/launchd_stderr.log
+tail -f logs/publishing/publish_*.log
+
+# Check maintenance logs
+ls -lh logs/maintenance/
+cat logs/maintenance/cleanup_*.log
+cat logs/maintenance/reprocess_*.log
+
+# View audit trail
+cat data/runtime/audit.jsonl | jq '.'  # Pretty-print JSONL
+
+# Check execution telemetry
+cat data/runtime/execution_ledger_$(date +%Y-%m-%d).json | jq '.'
+
+# ============================================================================
+# Output Inspection
+# ============================================================================
 
 # Check today's outputs
 ls -lh data/reports/daily_report_$(date +%Y-%m-%d).md
 ls -lh dashboards/dashboard_$(date +%Y-%m-%d).html
 ls -lh data/publishing/$(date +%Y-%m-%d).json
 
+# View today's report
+cat data/reports/daily_report_$(date +%Y-%m-%d).md
+open dashboards/dashboard_$(date +%Y-%m-%d).html
+
+# ============================================================================
+# Static Site Development
+# ============================================================================
+
 # Test static site locally
 cd site
 pnpm install
 pnpm run build
 pnpm run preview  # Visit http://localhost:4321
+
+# Force rebuild site data
+node scripts/ingest.mjs
+node scripts/build-search-index.mjs
 ```
 
 ### 🔍 System Status
 
-✅ **Production Ready** - All major features implemented and tested  
-✅ **Fully Automated** - Daily execution via LaunchD  
-✅ **Intelligent Pipeline** - Context-aware prompts with AI synthesis  
-✅ **Static Site Publishing** - Automated Cloudflare Pages deployment  
-✅ **Full-Text Search** - Client-side search with MiniSearch  
-✅ **Smart Filtering** - Tags, categories, and temporal navigation  
+✅ **Production Ready** - All major features implemented and tested
+✅ **Fully Automated** - Daily execution via LaunchD
+✅ **Intelligent Pipeline** - Context-aware prompts with AI synthesis
+✅ **Static Site Publishing** - Automated Cloudflare Pages deployment
+✅ **Full-Text Search** - Client-side search with MiniSearch
+✅ **Smart Filtering** - Tags, categories, and temporal navigation
+✅ **Maintenance Tools** - Workspace cleanup and force reprocess operations
+✅ **Audit Trail** - Complete operation history in JSONL format
+✅ **Pipeline Safety** - Git checks, locking, and graceful termination
 ✅ **Comprehensive Documentation** - Setup, management, troubleshooting guides  
 
 See implementation logs in `ai_dev_logs/` for complete feature details:
