@@ -16,20 +16,20 @@ Every morning, wake up to an intelligent synthesis dashboard published to your c
 
 ### ✨ Key Features
 
-✅ **22 Curated Research Prompts** - 5 categories (Research, Market, Ideation, Analysis, Meta)
-✅ **Intelligent Synthesis** - Cross-domain thematic analysis with AI-powered insights
-✅ **Full Idempotency** - Re-runs complete in <1 second, safe for repeated execution
-✅ **Context-Aware Prompts** - Historical analysis, temporal awareness, structured references
-✅ **LaunchD Automation** - Daily scheduling at 7 AM (customizable)
-✅ **Static Site Publishing** - Modern Astro-based site deployed to Cloudflare Pages
-✅ **Full-Text Search** - MiniSearch-powered client-side search with fuzzy matching
-✅ **Tag & Category Filtering** - Smart filtering with tag cloud and category pills
-✅ **Automated Tag Extraction** - AI-generated tags and categories from daily reports
-✅ **Beautiful Design** - Dark theme with electric violet accents, GitHub-style markdown
-✅ **Comprehensive Logging** - Detailed execution traces and deployment logs
-✅ **Maintenance Operations** - Workspace cleanup and force reprocess with audit trail
-✅ **Pipeline Locking** - Safe concurrent execution prevention with graceful termination
-✅ **Git Safety Checks** - Prevents destructive operations on dirty working trees  
+- ✅ **22 Curated Research Prompts** - 5 categories (Research, Market, Ideation, Analysis, Meta)
+- ✅ **Intelligent Synthesis** - Cross-domain thematic analysis with AI-powered insights
+- ✅ **Full Idempotency** - Re-runs complete in <1 second, safe for repeated execution
+- ✅ **Context-Aware Prompts** - Historical analysis, temporal awareness, structured references
+- ✅ **LaunchD Automation** - Daily scheduling at 7 AM (customizable)
+- ✅ **Static Site Publishing** - Modern Astro-based site deployed to Cloudflare Pages
+- ✅ **Full-Text Search** - MiniSearch-powered client-side search with fuzzy matching
+- ✅ **Tag & Category Filtering** - Smart filtering with tag cloud and category pills
+- ✅ **Automated Tag Extraction** - AI-generated tags and categories from daily reports
+- ✅ **Beautiful Design** - Dark theme with electric violet accents, GitHub-style markdown
+- ✅ **Comprehensive Logging** - Detailed execution traces and deployment logs
+- ✅ **Maintenance Operations** - Workspace cleanup and force reprocess with audit trail
+- ✅ **Pipeline Locking** - Safe concurrent execution prevention with graceful termination
+- ✅ **Git Safety Checks** - Prevents destructive operations on dirty working trees  
 
 ### 📁 Project Structure
 
