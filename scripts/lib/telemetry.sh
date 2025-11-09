@@ -37,12 +37,13 @@ init_execution_ledger() {
     local date="${1:-$(date +%Y-%m-%d)}"
     EXECUTION_LEDGER_FILE="${RUNTIME_DIR}/execution_ledger_${date}.json"
     TELEMETRY_TEMP_FILE="${RUNTIME_DIR}/.telemetry_temp_${date}.txt"
-    
+
     # Create runtime directory if needed
     mkdir -p "${RUNTIME_DIR}" 2>/dev/null || true
-    
-    # Initialize JSON structure if file doesn't exist
-    if [ ! -f "$EXECUTION_LEDGER_FILE" ]; then
+
+    # Initialize JSON structure if file doesn't exist OR is empty
+    # This handles cases where cleanup or other processes create empty files
+    if [ ! -f "$EXECUTION_LEDGER_FILE" ] || [ ! -s "$EXECUTION_LEDGER_FILE" ]; then
         cat > "$EXECUTION_LEDGER_FILE" << LEDGER_INIT
 {
   "date": "${date}",
@@ -58,7 +59,7 @@ init_execution_ledger() {
 }
 LEDGER_INIT
     fi
-    
+
     # Initialize temp file for tracking start times
     : > "$TELEMETRY_TEMP_FILE"
 }

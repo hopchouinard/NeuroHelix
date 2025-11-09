@@ -39,3 +39,6 @@ logs/publishing/
 *.log
 data/runtime/
 logs/
+
+# generated data
+data/
