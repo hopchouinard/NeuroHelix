@@ -77,6 +77,24 @@ This new feature will address the prompt pipeline management and execution monit
 3. Batched summary at the end of the run.
 4. Daily report summary include execution durations.
 
-### answering clarifying questions for the cleanup spec
+### answering clarifying questions for the new layout specification.
 
-Hi
+1. Should it cover both the Astro layout implementation and the upstream pipeline/publishing changes (data export, routing, selective rebuild tooling), or focus strictly on the front-end experience?
+   - It should cover both the Astro layout implementation and the upstream pipeline/publishing changes to ensure a cohesive user experience. This specification should detail how the front-end will interact with the data provided by the pipeline, as well as any necessary changes to the publishing process to support the new layout.
+2. Do you expect explicit technical decisions (e.g., component structure, data contracts, deployment hooks) similar to the earlier specs in ai_docs/00x_*.md, or a lighter-weight brief? 
+   - I expect explicit technical decisions similar to the earlier specs. This should include detailed component structures, data contracts, and deployment hooks to ensure clarity and ease of implementation for the development team.
+
+Please make sure to ask any clarifying question necessary to make absolutely certain your understanding is complete. 
+
+---
+
+1. Should I assume the Astro site from 004_static_site_publishing.md already exists and this spec layers on top of that foundation, or do you want me to restate any prerequisites from 004 so the document can stand on its own?
+   - Assume the Astro site from 004_static_site_publishing.md already exists. This specification should build upon that foundation without restating prerequisites, allowing for a focused approach on the new layout and publishing changes.
+2. For the “Source View,” do you want raw files surfaced exactly as they exist in data/outputs/daily/YYYY-MM-DD/ (same file names, folders), or should the spec describe any normalization/renaming before publishing?
+   - This function should behave the same way as "Preview | Code" View in GitHub, so raw files should be surfaced exactly as they exist in data/outputs/daily/YYYY-MM-DD/ without any normalization or renaming before publishing. The “Processed View" should handle any necessary rendering or formatting and represent what the "Preview" tab does on GitHub and the "Source View" should represent what the "Code" tab does on GitHub.
+3. When defining the data contracts: do we need to account for every artifact type we expect today (prompts, summaries, cross-analysis, etc.) or leave room for arbitrary future file types with a generic schema?
+   - We should account for every artifact type we expect today to ensure proper rendering and navigation. However, the schema should also be designed to accommodate arbitrary future file types, allowing for flexibility and scalability in the publishing system.
+4. Selective rebuilds: should the spec mandate a new CLI (e.g., ./scripts/publish.sh --day 2025-01-02 --view source) or integrate into the existing orchestrator flags described in earlier specs?
+   - The spec should integrate into the existing orchestrator flags described in earlier specs. This approach will maintain consistency in the deployment process and minimize the need for additional tooling, making it easier for developers to manage builds and deployments.
+5. Command palette/global search: should the new index cover both synthesized reports and raw source files, or only the synthesized layer?
+   - The new index should cover both synthesized reports and raw source files. This comprehensive search functionality will enhance user experience by allowing users to easily find information across all layers of the published content.

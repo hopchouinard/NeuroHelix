@@ -326,6 +326,10 @@ log "🎨 Step 3: Generating dashboard..."
 log "📦 Step 4: Exporting static site payload..."
 "${PROJECT_ROOT}/scripts/renderers/export_site_payload.sh" 2>&1 | tee -a "$LOG_FILE"
 
+# Step 4.5: Export source manifests and raw artifacts
+log "📂 Step 4.5: Exporting source manifests and raw artifacts..."
+"${PROJECT_ROOT}/scripts/renderers/export_source_manifest.sh" 2>&1 | tee -a "$LOG_FILE"
+
 # Step 5: Publish static site (if enabled)
 DEPLOY_ID=""
 if [ "${ENABLE_STATIC_SITE_PUBLISHING:-false}" = "true" ]; then
