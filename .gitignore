@@ -34,3 +34,8 @@ site/dist/
 site/.astro/
 site/.deploy-cache/
 logs/publishing/
+
+# Logs and temp files
+*.log
+data/runtime/
+logs/
