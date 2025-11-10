@@ -29,6 +29,9 @@ Every morning, wake up to an intelligent synthesis dashboard published to your c
 - ✅ **Comprehensive Logging** - Detailed execution traces and deployment logs
 - ✅ **Maintenance Operations** - Workspace cleanup and force reprocess with audit trail
 - ✅ **Pipeline Locking** - Safe concurrent execution prevention with graceful termination
+- ✅ **Telemetry & Alerts** - Prompt-level logs, JSON execution ledgers, and optional failure emails
+- ✅ **Source Artifact Publishing** - Raw prompts, summaries, and insights mirrored for IDE-style Source View
+- ✅ **Vector Metadata Exports** - Per-file manifests plus embeddings-ready JSON for downstream ingestion
 - ✅ **Git Safety Checks** - Prevents destructive operations on dirty working trees  
 
 ### 📁 Project Structure
@@ -36,34 +39,38 @@ Every morning, wake up to an intelligent synthesis dashboard published to your c
 ```
 NeuroHelix/
 ├── config/
-│   ├── env.sh              # Configuration & feature flags
-│   └── searches.tsv        # 22 research prompts (5 categories)
+│   ├── env.sh              # Project paths, feature flags, API tokens
+│   ├── env.EXAMPLE.sh      # Template for new installs
+│   └── searches.tsv        # 22 research prompts across 5 categories
 ├── scripts/
-│   ├── orchestrator.sh     # Main pipeline coordinator (6-step process)
-│   ├── lib/                # Shared libraries (audit, cleanup, git safety, etc.)
-│   ├── executors/          # Prompt execution with context injection
-│   ├── aggregators/        # Intelligent synthesis + tag extraction
-│   ├── renderers/          # Dashboard generation + JSON export
-│   ├── publish/            # Cloudflare Pages deployment
-│   └── notifiers/          # Email notifications
+│   ├── orchestrator.sh     # Main pipeline coordinator + maintenance modes
+│   ├── lib/                # Audit, telemetry, git safety, cleanup, Cloudflare helpers
+│   ├── executors/          # Prompt runner with telemetry + historical context
+│   ├── aggregators/        # Synthesis + tag extraction
+│   ├── renderers/          # Dashboard, site payload, source manifest exporters
+│   ├── publish/            # Cloudflare Pages deployment script
+│   └── notifiers/          # Success + failure notification hooks
 ├── site/                   # Astro static site (published to web)
-│   ├── src/                # Components, layouts, pages
-│   ├── scripts/            # Data ingestion + search index generation
-│   └── public/             # Static assets (logo, search index)
+│   ├── src/                # Components, layouts, dual-view pages
+│   ├── scripts/            # Ingestion + MiniSearch index builders
+│   ├── static/source/      # Raw artifacts mirrored per day for Source View
+│   └── public/             # Assets + search-index JSON
 ├── launchd/
 │   └── com.neurohelix.daily.plist  # Scheduling template
 ├── data/
 │   ├── outputs/daily/      # Raw prompt outputs (by date)
-│   ├── reports/            # Daily synthesized markdown reports
-│   ├── publishing/         # JSON payloads for static site
-│   └── runtime/            # Execution ledgers + audit trail (audit.jsonl)
+│   ├── reports/            # Synthesized markdown reports + tag JSON
+│   ├── publishing/         # Site payloads + source_manifests + vector_exports
+│   └── runtime/            # Execution ledgers, telemetry temp files, audit.jsonl
 ├── dashboards/             # Legacy HTML dashboards
 ├── logs/
-│   ├── maintenance/        # Cleanup & reprocess operation logs
-│   ├── publishing/         # Cloudflare deployment logs
-│   └── *.log               # Execution logs (orchestrator, prompt execution)
+│   ├── maintenance/        # Cleanup & reprocess logs
+│   ├── publishing/         # Build/deploy logs + latest.json summary
+│   └── prompt_execution_*.log  # Telemetry emitted per run
+├── tests/                  # Bash-based smoke tests for telemetry & prompts
 ├── docs/                   # Setup guides and documentation
-└── install_automation.sh   # LaunchD installer script
+├── install_automation.sh   # LaunchD installer script
+└── uninstall_automation.sh # Removes LaunchD job
 ```
 
 ### 🚀 Quick Start
@@ -457,7 +464,7 @@ These commands are **operator-only** and require manual terminal invocation.
 
 #### Static Website (Primary)
 - **Modern Framework** - Built with Astro 5 + Tailwind CSS 4
-- **Full-Text Search** - MiniSearch-powered client-side search with fuzzy matching
+- **Full-Text Search** - MiniSearch-powered search across processed reports *and* raw source artifacts with fuzzy + prefix queries
 - **Smart Filtering** - Filter by tags and categories with instant updates
 - **Tag Cloud** - Weighted visualization of all tags with frequency-based sizing
 - **Category Pills** - Multi-select filtering by research categories
@@ -466,6 +473,7 @@ These commands are **operator-only** and require manual terminal invocation.
 - **Dark Theme** - Charcoal background (#1a1a1a) with electric violet (#8b5cf6) accents
 - **Responsive Design** - Mobile-first with smooth transitions
 - **Accessibility** - WCAG AA compliant with keyboard navigation
+- **Source View** - IDE-inspired repo tree, breadcrumbs, metadata panel, and raw file viewer fed by daily source manifests
 - **Cloudflare Deployment** - Automated publishing via Wrangler CLI
 
 #### Legacy HTML Dashboards
@@ -488,11 +496,85 @@ These commands are **operator-only** and require manual terminal invocation.
 9. **Cloudflare Deployment** - Automated publishing to production domain
 10. **Idempotent Re-runs** - Safe to execute multiple times (completes in <1s)
 
+#### Visual Flow
+
+```mermaid
+flowchart LR
+  L[LaunchD schedule] -->|7 AM trigger| O[scripts/orchestrator.sh]
+  O -->|Step 1| E["executors/*\n(Gemini CLI prompts)"]
+  E -->|raw outputs| D1["data/outputs/daily/YYYY-MM-DD/"]
+  D1 -->|context + history| R["aggregators/*\n(AI synthesis + tagging)"]
+  R -->|markdown report| D2["data/reports/daily_report_YYYY-MM-DD.md"]
+  R -->|structured payload| D3["data/publishing/YYYY-MM-DD.json"]
+  D3 -->|export_source_manifest.sh| D4["data/publishing/source_manifests/YYYY-MM-DD.json"]
+  D4 -->|static copy| RAW["site/static/source/<date>/**"]
+  D3 -->|ingest.mjs| S["site/scripts/ingest.mjs"]
+  D3 -->|build-search-index.mjs| IDX["public/search-index.json(.gz)"]
+  RAW --> ASTRO["pnpm build (Astro)"]
+  IDX --> ASTRO
+  S --> ASTRO
+  ASTRO -->|dist assets| DIST["site/dist/"]
+  DIST -->|wrangler pages deploy| CF[Cloudflare Pages]
+
+  classDef schedule fill:#1c1917,stroke:#fb923c,color:#fff7ed,stroke-width:2px;
+  classDef process fill:#0f172a,stroke:#38bdf8,color:#e0f2fe;
+  classDef data fill:#052e16,stroke:#34d399,color:#d1fae5;
+  classDef site fill:#1f2937,stroke:#c084fc,color:#f5f3ff;
+  classDef deploy fill:#111827,stroke:#f472b6,color:#fff;
+
+  class L schedule;
+  class O,E,R,S process;
+  class D1,D2,D3,D4,RAW,IDX data;
+  class ASTRO,DIST site;
+  class CF deploy;
+```
+
 **Manual Interventions:**
 - **Force Reprocess** - Use `--reprocess-today` to delete and regenerate today's data
 - **Workspace Cleanup** - Use `--cleanup-all` to reset entire workspace to clean state
 - **Pipeline Lock** - Automatic prevention of concurrent executions with safe termination
 - **Audit Trail** - All operations logged to `data/runtime/audit.jsonl` for accountability
+
+### 📦 Pipeline Artifacts & Data Contracts
+
+Each successful run writes deterministic artifacts so downstream tooling can trust the state of disk:
+
+- `data/outputs/daily/YYYY-MM-DD/` – raw prompt outputs plus a `.execution_complete` marker for idempotency.
+- `data/reports/daily_report_YYYY-MM-DD.md`, companion `combined_findings_*.md`, and `tags_YYYY-MM-DD.json` (tag + category metadata used by the site).
+- `data/publishing/YYYY-MM-DD.json` – structured payload emitted by `scripts/renderers/export_site_payload.sh`.
+- `data/publishing/source_manifests/YYYY-MM-DD.json` – IDE-style manifest generated by `scripts/renderers/export_source_manifest.sh`, including artifactType, displayGroup, checksums, TOC, and previews.
+- `data/publishing/vector_exports/YYYY-MM-DD.json` – vector-ready metadata for future embedding + retrieval workflows.
+- `site/static/source/YYYY-MM-DD/**` – byte-for-byte copies of the raw artifacts served by the Source View download button.
+- `data/runtime/execution_ledger_YYYY-MM-DD.json` – JSON ledger that records every prompt, timing, and status; `data/runtime/audit.jsonl` captures cleanup/reprocess overrides.
+- `logs/prompt_execution_YYYY-MM-DD.log` – human-readable telemetry log; `logs/publishing/latest.json` surfaces bundle size and deploy URL for the most recent site publish.
+
+### 📊 Telemetry, Monitoring & Notifications
+
+- `scripts/lib/telemetry.sh` powers prompt-level logging, ISO8601 timestamps, duration tracking, and the summary table that gets embedded back into each report.
+- `scripts/executors/run_prompts.sh` writes both the log and the execution ledger, then calls `finalize_ledger_summary` so aggregate counts are available for dashboards or alerting.
+- Failure-only notifications run through `scripts/notifiers/notify_failures.sh`, which parses the ledger, builds a markdown-like table, and emails `FAILURE_NOTIFICATION_EMAIL` with retry logic.
+- Success notifications (`scripts/notifiers/notify.sh`) support email + Discord webhooks for daily “dashboard ready” pings.
+- Telemetry tests (`tests/test_telemetry.sh`) validate log headers, schema, and duration math—useful after tweaking the logger.
+
+### 🗂️ Source Publishing & Vector Readiness
+
+- `scripts/renderers/export_source_manifest.sh` walks `data/outputs/daily/*`, classifies artifacts (prompt, raw_summary, cross_analysis, insight_draft, metadata, other), and captures file size, checksum, MIME type, TOC, display group, and preview text.
+- The script also mirrors raw files into `site/static/source/<date>/` so the Astro Source View can stream or download originals exactly as generated.
+- `data/publishing/vector_exports/` mirrors the manifest IDs but is shaped for ingestion into future embedding/vector databases, keeping the system ready for semantic search or RAG upgrades.
+- These manifests feed `site/scripts/ingest.mjs` and the MiniSearch index so command palette search spans both polished narratives and the raw research trace.
+
+### ⚙️ Automation & Operations
+
+- `install_automation.sh` / `uninstall_automation.sh` manage the LaunchD job defined in `launchd/com.neurohelix.daily.plist`, automatically wiring in the project path and Cloudflare token.
+- Maintenance modes in `scripts/orchestrator.sh` invoke shared helpers (`scripts/lib/cleanup.sh`, `scripts/lib/reprocess.sh`, `scripts/lib/cloudflare.sh`) to retract deployments, enforce git cleanliness, and write audit entries.
+- `scripts/publish/static_site.sh` runs the full pnpm install → Astro build → Wrangler deploy pipeline, records bundle size/duration, verifies deployment status, and writes `logs/publishing/latest.json`.
+- Operators can also call `scripts/renderers/export_site_payload.sh` or `scripts/renderers/export_source_manifest.sh <YYYY-MM-DD>` manually when backfilling data or regenerating a single day.
+
+### ✅ Tests & Smoke Checks
+
+- `tests/test_telemetry.sh` – exercises the telemetry logger, ledger schema, ISO8601 helpers, and summary math.
+- `tests/test_single_prompt.sh`, `tests/test_prompt_failure.sh`, and `tests/test_context_aware_prompts.sh` – lightweight harnesses for prompt execution edge cases.
+- Run any test via `bash tests/<name>.sh` (e.g., `bash tests/test_telemetry.sh`) before changing `PARALLEL_EXECUTION` defaults or editing `scripts/lib/telemetry.sh`.
 
 ### 🤖 Context-Aware Intelligence
 
@@ -567,12 +649,12 @@ Today's research reveals three major technological shifts:
 ```
 
 #### Static Site ([neurohelix.userdomain.com](https://neurohelix.userdomain.com))
-- Interactive dashboard gallery with search
+- Interactive dashboard gallery with search + filters
 - Tag cloud with frequency-based weighting
 - Category filtering (Research, Market, Ideation, Analysis, Meta)
-- Full-text search across all reports
-- Mobile-responsive design
-- Deep linking to report sections
+- Full-text search / command palette spanning processed reports and raw source artifacts
+- IDE-style Source View (repo tree, breadcrumbs, raw viewer, download button)
+- Mobile-responsive design with deep linking to report sections and headings
 
 #### Legacy HTML Dashboard (`dashboards/dashboard_YYYY-MM-DD.html`)
 Self-contained HTML with embedded CSS featuring:
@@ -684,6 +766,38 @@ pnpm run preview  # Visit http://localhost:4321
 # Force rebuild site data
 node scripts/ingest.mjs
 node scripts/build-search-index.mjs
+
+# ============================================================================
+# Publishing & Source Utilities
+# ============================================================================
+
+# Export structured payload for today's report (JSON consumed by Astro)
+./scripts/renderers/export_site_payload.sh
+
+# Backfill payload/source manifest for a specific date
+./scripts/renderers/export_site_payload.sh 2025-01-05
+./scripts/renderers/export_source_manifest.sh 2025-01-05
+
+# Copy raw artifacts + manifests for today's run
+./scripts/renderers/export_source_manifest.sh
+
+# Deploy Astro site via Wrangler (build + publish + verify)
+./scripts/publish/static_site.sh
+
+# Inspect latest deployment summary
+cat logs/publishing/latest.json | jq '.'
+
+# ============================================================================
+# Tests & Smoke Checks
+# ============================================================================
+
+# Validate telemetry library
+bash tests/test_telemetry.sh
+
+# Run prompt execution smoke tests
+bash tests/test_single_prompt.sh
+bash tests/test_prompt_failure.sh
+bash tests/test_context_aware_prompts.sh
 ```
 
 ### 🔍 System Status
