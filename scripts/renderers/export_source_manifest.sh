@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# Ensure the script is run with bash
+if [ -z "$BASH_VERSION" ]; then
+    echo "Error: This script requires Bash to run. Re-executing with bash..." 1>&2
+    exec bash "$0" "$@"
+    exit 1 # Should not be reached
+fi
+
 # export_source_manifest.sh
 # Generates source manifests for raw artifacts and copies them to the static site.
 # This script creates the metadata needed for the Source View feature.
@@ -80,12 +87,15 @@ determine_display_group() {
     fi
 }
 
-# Determine MIME type based on extension
+# Determine MIME type based on extension (bash 3.2 compatible)
 determine_mime_type() {
     local filename="$1"
     local ext="${filename##*.}"
+    # Convert to lowercase using tr (bash 3.2 compatible)
+    local ext_lower
+    ext_lower=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
 
-    case "${ext,,}" in
+    case "$ext_lower" in
         md|markdown) echo "text/markdown" ;;
         json) echo "application/json" ;;
         yaml|yml) echo "application/yaml" ;;
@@ -132,7 +142,7 @@ extract_toc() {
     fi
 }
 
-# Generate preview text (first 280 chars, sanitized)
+# Generate preview text (first 280 chars, sanitized for JSON)
 generate_preview() {
     local filepath="$1"
     local mime="$2"
@@ -143,8 +153,9 @@ generate_preview() {
         return
     fi
 
-    # Read first 500 chars and sanitize
-    local content=$(head -c 500 "$filepath" | tr -d '\000-\011\013-\037' | sed 's/"/\\"/g')
+    # Read first 500 chars, remove ALL control characters (including newlines and tabs)
+    # Then escape quotes for JSON
+    local content=$(head -c 500 "$filepath" | tr -d '\000-\037' | sed 's/"/\\"/g' | tr -s ' ')
     # Truncate to 280 chars
     echo "${content:0:280}"
 }
@@ -166,10 +177,41 @@ cat > "${VECTOR_EXPORT_FILE}.tmp" <<EOF
   "artifacts": [
 EOF
 
-# Initialize stats counters
-declare -A type_counts
+# Initialize stats counters (using arrays compatible with bash 3.2)
+type_counts_types=""
+type_counts_values=""
 total_size=0
 artifact_count=0
+
+# Helper function to increment type count (bash 3.2 compatible)
+increment_type_count() {
+    local type="$1"
+    local found=false
+    local new_types=""
+    local new_values=""
+
+    # Convert to arrays
+    IFS=' ' read -ra types_array <<< "$type_counts_types"
+    IFS=' ' read -ra values_array <<< "$type_counts_values"
+
+    # Search for existing type
+    for i in "${!types_array[@]}"; do
+        if [[ "${types_array[$i]}" == "$type" ]]; then
+            values_array[$i]=$((${values_array[$i]} + 1))
+            found=true
+        fi
+    done
+
+    # If not found, add new type
+    if [[ "$found" == "false" ]]; then
+        types_array+=("$type")
+        values_array+=("1")
+    fi
+
+    # Convert back to space-separated strings
+    type_counts_types="${types_array[*]}"
+    type_counts_values="${values_array[*]}"
+}
 
 # Process all files in the source directory
 first_entry=true
@@ -201,7 +243,7 @@ while IFS= read -r filepath; do
     preview=$(generate_preview "$filepath" "$mime_type")
 
     # Update stats
-    type_counts[$artifact_type]=$((${type_counts[$artifact_type]:-0} + 1))
+    increment_type_count "$artifact_type"
     total_size=$((total_size + file_size))
     artifact_count=$((artifact_count + 1))
 
@@ -255,16 +297,22 @@ done < <(find "$SOURCE_ROOT" -type f | sort)
 echo -e "\n  ]," >> "${MANIFEST_FILE}.tmp"
 echo -e "\n  ]" >> "${VECTOR_EXPORT_FILE}.tmp"
 
-# Build type counts JSON
+# Build type counts JSON (bash 3.2 compatible)
 type_counts_json="{"
 first_type=true
-for type in "${!type_counts[@]}"; do
+
+# Convert to arrays
+IFS=' ' read -ra types_array <<< "$type_counts_types"
+IFS=' ' read -ra values_array <<< "$type_counts_values"
+
+# Build JSON
+for i in "${!types_array[@]}"; do
     if [[ "$first_type" = true ]]; then
         first_type=false
     else
         type_counts_json+=","
     fi
-    type_counts_json+="\"${type}\":${type_counts[$type]}"
+    type_counts_json+="\"${types_array[$i]}\":${values_array[$i]}"
 done
 type_counts_json+="}"
 

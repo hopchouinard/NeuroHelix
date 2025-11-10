@@ -328,7 +328,7 @@ log "📦 Step 4: Exporting static site payload..."
 
 # Step 4.5: Export source manifests and raw artifacts
 log "📂 Step 4.5: Exporting source manifests and raw artifacts..."
-"${PROJECT_ROOT}/scripts/renderers/export_source_manifest.sh" 2>&1 | tee -a "$LOG_FILE"
+bash "${PROJECT_ROOT}/scripts/renderers/export_source_manifest.sh" 2>&1 | tee -a "$LOG_FILE"
 
 # Step 5: Publish static site (if enabled)
 DEPLOY_ID=""
