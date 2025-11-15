@@ -86,7 +86,7 @@ def main(
     # Initialize services
     ledger_service = LedgerService(repo_root)
     manifest_service = ManifestService(repo_root)
-    gemini_adapter = GeminiCLIAdapter(repo_root)
+    gemini_adapter = GeminiCLIAdapter(repo_root, enable_rate_limiting=True)
 
     # Load registry
     registry_path = repo_root / "orchestrator" / "config" / "prompts.tsv"

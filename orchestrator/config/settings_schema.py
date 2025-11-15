@@ -72,6 +72,18 @@ class NHSettings(BaseModel):
     lock_ttl_seconds: int = Field(default=7200, gt=0, description="Lock TTL in seconds (2 hours)")
     cleanup_keep_days: int = Field(default=90, gt=0, description="Days to keep old artifacts")
 
+    # Rate limiting settings
+    enable_rate_limiting: bool = Field(default=True, description="Enable API rate limiting")
+    rate_limit_requests_per_minute: int = Field(
+        default=50, gt=0, description="Maximum API requests per minute"
+    )
+    rate_limit_requests_per_day: int = Field(
+        default=1000, gt=0, description="Maximum API requests per day"
+    )
+    rate_limit_burst_size: int = Field(
+        default=10, gt=0, description="Token bucket burst size"
+    )
+
     class Config:
         """Pydantic config."""
 

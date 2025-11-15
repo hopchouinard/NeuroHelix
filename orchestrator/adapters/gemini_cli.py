@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 from config.settings_schema import PromptPolicy
+from services.rate_limiter import RateLimitError, get_rate_limiter
 
 
 class GeminiCLIError(Exception):
@@ -15,16 +16,28 @@ class GeminiCLIError(Exception):
     pass
 
 
-class GeminiCLIAdapter:
-    """Adapter for executing Gemini CLI commands with retry logic."""
+class RateLimitDetectedError(Exception):
+    """Exception raised when rate limiting is detected."""
 
-    def __init__(self, repo_root: Path):
+    pass
+
+
+class GeminiCLIAdapter:
+    """Adapter for executing Gemini CLI commands with retry logic and rate limiting."""
+
+    def __init__(self, repo_root: Path, enable_rate_limiting: bool = True):
         """Initialize the Gemini CLI adapter.
 
         Args:
             repo_root: Repository root directory
+            enable_rate_limiting: Whether to enable rate limiting
         """
         self.repo_root = repo_root
+        self.enable_rate_limiting = enable_rate_limiting
+        if enable_rate_limiting:
+            self.rate_limiter = get_rate_limiter()
+        else:
+            self.rate_limiter = None
 
     def execute_prompt(
         self,
@@ -71,6 +84,15 @@ class GeminiCLIAdapter:
         # Retry loop
         for attempt in range(policy.max_retries + 1):
             try:
+                # Wait for rate limiter token if enabled
+                if self.rate_limiter:
+                    try:
+                        self.rate_limiter.wait_if_needed(timeout=120.0)
+                    except RateLimitError as e:
+                        # Daily limit exceeded - fail immediately
+                        ended_at = datetime.now()
+                        raise GeminiCLIError(f"Rate limit exceeded: {e}") from e
+
                 exit_code, output = self._invoke_gemini_cli(
                     prompt=full_prompt,
                     model=policy.model,
@@ -84,13 +106,21 @@ class GeminiCLIAdapter:
                 if exit_code == 0:
                     return (exit_code, output, started_at, ended_at, retries)
                 else:
+                    # Check if this is a rate limit error
+                    is_rate_limit = self._is_rate_limit_error(output)
+
                     # Capture stderr in error message
                     last_error = f"Gemini CLI exited with code {exit_code}: {output[:500]}"
                     retries = attempt
 
                     # Retry with exponential backoff
                     if attempt < policy.max_retries:
-                        backoff_time = min(2 ** attempt, 60)  # Max 60 seconds
+                        if is_rate_limit:
+                            # Longer backoff for rate limits (30-120 seconds)
+                            backoff_time = min(30 * (2 ** attempt), 120)
+                        else:
+                            # Standard exponential backoff
+                            backoff_time = min(2 ** attempt, 60)
                         time.sleep(backoff_time)
 
             except subprocess.TimeoutExpired as e:
@@ -138,13 +168,11 @@ class GeminiCLIAdapter:
         # Ensure output directory exists
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Build command
+        # Build command (Gemini CLI doesn't support --temperature flag)
         cmd = [
             "gemini",
             "--model",
             model,
-            "--temperature",
-            str(temperature),
             prompt,
         ]
 
@@ -230,3 +258,27 @@ class GeminiCLIAdapter:
             return None
         except:
             return None
+
+    def _is_rate_limit_error(self, error_output: str) -> bool:
+        """Detect if error is due to rate limiting.
+
+        Args:
+            error_output: stderr or error message from Gemini CLI
+
+        Returns:
+            True if this appears to be a rate limit error
+        """
+        if not error_output:
+            return False
+
+        error_lower = error_output.lower()
+        rate_limit_indicators = [
+            "429",  # HTTP 429 Too Many Requests
+            "rate limit",
+            "quota exceeded",
+            "too many requests",
+            "resource exhausted",
+            "requests per minute",
+        ]
+
+        return any(indicator in error_lower for indicator in rate_limit_indicators)
