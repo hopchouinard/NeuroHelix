@@ -85,7 +85,7 @@ class AuditService:
         affected_paths = removed_files + removed_locks
 
         self.log_operation(
-            command=f"nh cleanup {'--dry-run' if dry_run else ''}",
+            command=f"nh cleanup{' --dry-run' if dry_run else ''}",
             affected_paths=affected_paths,
             metadata=metadata,
         )
@@ -114,7 +114,7 @@ class AuditService:
         }
 
         self.log_operation(
-            command=f"nh reprocess --date {date} {'--dry-run' if dry_run else ''}",
+            command=f"nh reprocess --date {date}{' --dry-run' if dry_run else ''}",
             affected_paths=regenerated_files,
             metadata=metadata,
         )

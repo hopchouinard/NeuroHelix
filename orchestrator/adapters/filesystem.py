@@ -44,27 +44,33 @@ class FileLock:
         self.lock_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Check for existing lock
-        if self.lock_path.exists() and not force:
-            existing_metadata = self._read_lock_metadata()
-            if existing_metadata:
-                timestamp = existing_metadata.get("timestamp", 0)
-                age = time.time() - timestamp
+        if self.lock_path.exists():
+            if force:
+                # Force mode - remove existing lock
+                self.lock_path.unlink()
+            else:
+                existing_metadata = self._read_lock_metadata()
+                if existing_metadata:
+                    timestamp = existing_metadata.get("timestamp", 0)
+                    ttl = existing_metadata.get("ttl", self.ttl_seconds)  # Use TTL from lock file
+                    age = time.time() - timestamp
 
-                if age < self.ttl_seconds:
-                    raise LockError(
-                        f"Lock already held by PID {existing_metadata.get('pid')} "
-                        f"for command '{existing_metadata.get('command')}' "
-                        f"(age: {int(age)}s, TTL: {self.ttl_seconds}s)"
-                    )
-                else:
-                    # Stale lock - remove it
-                    self.lock_path.unlink()
+                    if age < ttl:
+                        raise LockError(
+                            f"Lock already held by PID {existing_metadata.get('pid')} "
+                            f"for command '{existing_metadata.get('command')}' "
+                            f"(age: {int(age)}s, TTL: {int(ttl)}s)"
+                        )
+                    else:
+                        # Stale lock - remove it
+                        self.lock_path.unlink()
 
         # Write lock metadata
         self.metadata = {
             "pid": os.getpid(),
             "command": command,
             "timestamp": time.time(),
+            "ttl": self.ttl_seconds,
         }
 
         # Create lock file

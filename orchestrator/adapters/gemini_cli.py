@@ -104,6 +104,7 @@ class GeminiCLIAdapter:
                 ended_at = datetime.now()
 
                 if exit_code == 0:
+                    retries = attempt  # Track number of attempts before success
                     return (exit_code, output, started_at, ended_at, retries)
                 else:
                     # Check if this is a rate limit error

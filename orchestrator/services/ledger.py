@@ -155,7 +155,7 @@ class LedgerService:
         sha256 = hashlib.sha256()
         with open(prompts_tsv_path, "rb") as f:
             sha256.update(f.read())
-        return sha256.hexdigest()[:16]  # Shortened hash
+        return sha256.hexdigest()
 
     def compute_config_fingerprint(self, config: dict) -> str:
         """Compute fingerprint of configuration.
@@ -168,7 +168,7 @@ class LedgerService:
         """
         config_str = str(sorted(config.items()))
         sha256 = hashlib.sha256(config_str.encode())
-        return sha256.hexdigest()[:16]  # Shortened hash
+        return sha256.hexdigest()
 
     def get_run_log_path(self, date: str) -> Path:
         """Get path to human-readable run log.
@@ -210,9 +210,9 @@ class LedgerService:
         if not entries:
             return {
                 "total_prompts": 0,
-                "successful": 0,
-                "failed": 0,
-                "total_duration": 0,
+                "successful_prompts": 0,
+                "failed_prompts": 0,
+                "total_duration_seconds": 0,
                 "total_retries": 0,
             }
 
@@ -223,8 +223,8 @@ class LedgerService:
 
         return {
             "total_prompts": len(entries),
-            "successful": successful,
-            "failed": failed,
-            "total_duration": total_duration,
+            "successful_prompts": successful,
+            "failed_prompts": failed,
+            "total_duration_seconds": total_duration,
             "total_retries": total_retries,
         }

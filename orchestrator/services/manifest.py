@@ -137,20 +137,23 @@ class ManifestService:
         )
 
         # Write marker beside the output file
-        marker_path = output_path.parent / f".nh_status_{output_path.stem}.json"
+        marker_path = output_path.parent / f".nh_status_{prompt_id}.json"
         write_json(marker_path, marker.model_dump())
         return marker_path
 
-    def read_completion_marker(self, output_path: Path) -> Optional[CompletionMarker]:
+    def read_completion_marker(self, output_path: Path, prompt_id: Optional[str] = None) -> Optional[CompletionMarker]:
         """Read a completion marker for an artifact.
 
         Args:
             output_path: Path to the output file
+            prompt_id: Prompt ID (if None, derived from output_path.stem)
 
         Returns:
             CompletionMarker if exists, None otherwise
         """
-        marker_path = output_path.parent / f".nh_status_{output_path.stem}.json"
+        if prompt_id is None:
+            prompt_id = output_path.stem
+        marker_path = output_path.parent / f".nh_status_{prompt_id}.json"
         if not marker_path.exists():
             return None
 
@@ -190,7 +193,8 @@ class ManifestService:
                 return False
 
         # Check completion marker
-        marker = self.read_completion_marker(output_path)
+        prompt_id = prompt_policy.prompt_id if prompt_policy else None
+        marker = self.read_completion_marker(output_path, prompt_id)
         if not marker:
             return False
 
