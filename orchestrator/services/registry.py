@@ -59,6 +59,7 @@ class TSVRegistryProvider:
                 "wave",
                 "category",
                 "expected_outputs",
+                "prompt",
             }
             if not required_columns.issubset(set(reader.fieldnames or [])):
                 missing = required_columns - set(reader.fieldnames or [])
@@ -88,6 +89,7 @@ class TSVRegistryProvider:
                         max_retries=int(row.get("max_retries", "3")),
                         concurrency_class=concurrency_class,
                         expected_outputs=row["expected_outputs"],
+                        prompt=row["prompt"],
                         notes=row.get("notes") if row.get("notes") else None,
                     )
                     prompts.append(policy)

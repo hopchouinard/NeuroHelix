@@ -16,8 +16,8 @@ class TestTSVRegistryProvider:
         """Test loading a valid registry file."""
         # Create a minimal valid TSV
         tsv_path = tmp_path / "prompts.tsv"
-        tsv_content = """prompt_id\ttitle\twave\tcategory\texpected_outputs
-test_prompt\tTest Prompt\tsearch\tResearch\ttest.md
+        tsv_content = """prompt_id\ttitle\twave\tcategory\texpected_outputs\tprompt
+test_prompt\tTest Prompt\tsearch\tResearch\ttest.md\tThis is a test prompt
 """
         tsv_path.write_text(tsv_content)
 
@@ -57,9 +57,9 @@ test_prompt\tTest Prompt
     def test_validate_duplicate_ids(self, tmp_path):
         """Test validation catches duplicate prompt IDs."""
         tsv_path = tmp_path / "prompts.tsv"
-        tsv_content = """prompt_id\ttitle\twave\tcategory\texpected_outputs
-duplicate\tTest 1\tsearch\tResearch\ttest1.md
-duplicate\tTest 2\tsearch\tResearch\ttest2.md
+        tsv_content = """prompt_id\ttitle\twave\tcategory\texpected_outputs\tprompt
+duplicate\tTest 1\tsearch\tResearch\ttest1.md\tPrompt 1
+duplicate\tTest 2\tsearch\tResearch\ttest2.md\tPrompt 2
 """
         tsv_path.write_text(tsv_content)
 
@@ -72,8 +72,8 @@ duplicate\tTest 2\tsearch\tResearch\ttest2.md
     def test_validate_missing_critical_waves(self, tmp_path):
         """Test validation catches missing critical waves."""
         tsv_path = tmp_path / "prompts.tsv"
-        tsv_content = """prompt_id\ttitle\twave\tcategory\texpected_outputs
-test\tTest\trender\tAnalysis\ttest.md
+        tsv_content = """prompt_id\ttitle\twave\tcategory\texpected_outputs\tprompt
+test\tTest\trender\tAnalysis\ttest.md\tTest prompt
 """
         tsv_path.write_text(tsv_content)
 
@@ -86,9 +86,9 @@ test\tTest\trender\tAnalysis\ttest.md
     def test_validate_temperature_with_tools(self, tmp_path):
         """Test validation catches high temperature with tools."""
         tsv_path = tmp_path / "prompts.tsv"
-        tsv_content = """prompt_id\ttitle\twave\tcategory\ttools\ttemperature\texpected_outputs
-test\tTest\tsearch\tResearch\tcode_execution\t1.5\ttest.md
-aggregator\tAgg\taggregator\tSynthesis\t\t0.7\tagg.md
+        tsv_content = """prompt_id\ttitle\twave\tcategory\ttools\ttemperature\texpected_outputs\tprompt
+test\tTest\tsearch\tResearch\tcode_execution\t1.5\ttest.md\tTest prompt
+aggregator\tAgg\taggregator\tSynthesis\t\t0.7\tagg.md\tAgg prompt
 """
         tsv_path.write_text(tsv_content)
 
@@ -103,8 +103,8 @@ aggregator\tAgg\taggregator\tSynthesis\t\t0.7\tagg.md
     def test_default_values(self, tmp_path):
         """Test that default values are applied correctly."""
         tsv_path = tmp_path / "prompts.tsv"
-        tsv_content = """prompt_id\ttitle\twave\tcategory\texpected_outputs
-test\tTest\tsearch\tResearch\ttest.md
+        tsv_content = """prompt_id\ttitle\twave\tcategory\texpected_outputs\tprompt
+test\tTest\tsearch\tResearch\ttest.md\tTest prompt
 """
         tsv_path.write_text(tsv_content)
 
@@ -121,10 +121,10 @@ test\tTest\tsearch\tResearch\ttest.md
 def sample_registry(tmp_path):
     """Fixture providing a sample valid registry."""
     tsv_path = tmp_path / "prompts.tsv"
-    tsv_content = """prompt_id\ttitle\twave\tcategory\tmodel\ttemperature\texpected_outputs
-prompt1\tPrompt 1\tsearch\tResearch\tgemini-2.5-pro\t0.7\toutput1.md
-prompt2\tPrompt 2\tsearch\tMarket\tgemini-2.5-pro\t0.8\toutput2.md
-aggregator\tAggregator\taggregator\tSynthesis\tgemini-2.5-pro\t0.7\tdaily_report.md
+    tsv_content = """prompt_id\ttitle\twave\tcategory\tmodel\ttemperature\texpected_outputs\tprompt
+prompt1\tPrompt 1\tsearch\tResearch\tgemini-2.5-pro\t0.7\toutput1.md\tPrompt 1 text
+prompt2\tPrompt 2\tsearch\tMarket\tgemini-2.5-pro\t0.8\toutput2.md\tPrompt 2 text
+aggregator\tAggregator\taggregator\tSynthesis\tgemini-2.5-pro\t0.7\tdaily_report.md\tAggregator prompt
 """
     tsv_path.write_text(tsv_content)
     return tsv_path

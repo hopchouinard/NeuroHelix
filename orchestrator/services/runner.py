@@ -338,8 +338,8 @@ class RunnerService:
         Returns:
             Tuple of (prompt_text, context_data)
         """
-        # For now, use the title as the prompt (will be enhanced later)
-        prompt_text = prompt.title
+        # Use the actual prompt from the registry
+        prompt_text = prompt.prompt
 
         # Add context for special prompts (similar to Bash orchestrator)
         context_data = None

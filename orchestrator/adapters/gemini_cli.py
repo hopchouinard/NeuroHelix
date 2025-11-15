@@ -84,7 +84,8 @@ class GeminiCLIAdapter:
                 if exit_code == 0:
                     return (exit_code, output, started_at, ended_at, retries)
                 else:
-                    last_error = f"Gemini CLI exited with code {exit_code}"
+                    # Capture stderr in error message
+                    last_error = f"Gemini CLI exited with code {exit_code}: {output[:500]}"
                     retries = attempt
 
                     # Retry with exponential backoff
@@ -147,6 +148,14 @@ class GeminiCLIAdapter:
             prompt,
         ]
 
+        # Prepare environment - inherit current env and ensure Gemini settings
+        import os
+        env = os.environ.copy()
+
+        # Ensure GEMINI_APPROVAL_MODE is set (default to yolo for automation)
+        if "GEMINI_APPROVAL_MODE" not in env:
+            env["GEMINI_APPROVAL_MODE"] = "yolo"
+
         try:
             # Execute with timeout
             result = subprocess.run(
@@ -157,11 +166,17 @@ class GeminiCLIAdapter:
                 timeout=timeout_sec,
                 text=True,
                 cwd=str(self.repo_root),
+                env=env,
             )
 
             # Write output to file
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(result.stdout)
+
+            # If command failed, include stderr in return
+            if result.returncode != 0:
+                error_msg = result.stderr if result.stderr else f"Exit code {result.returncode}"
+                return result.returncode, error_msg
 
             return result.returncode, result.stdout
 

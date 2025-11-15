@@ -45,6 +45,7 @@ class PromptPolicy(BaseModel):
         default=ConcurrencyClass.MEDIUM, description="Concurrency class"
     )
     expected_outputs: str = Field(..., description="Expected output file pattern")
+    prompt: str = Field(..., description="The actual prompt text to execute")
     notes: Optional[str] = Field(default=None, description="Additional notes")
 
     @field_validator("prompt_id")
