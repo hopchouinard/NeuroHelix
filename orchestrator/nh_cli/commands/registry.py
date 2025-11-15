@@ -76,13 +76,14 @@ def validate(
                 table.add_row(wave, str(count))
 
             console.print(table)
-            raise typer.Exit(code=0)
         else:
             console.print("[red]✗[/red] Registry validation failed:\n")
             for error in errors:
                 console.print(f"  - {error}")
             raise typer.Exit(code=10)
 
+    except typer.Exit:
+        raise
     except Exception as e:
         console.print(f"[red]Error:[/red] Failed to load registry: {e}")
         raise typer.Exit(code=10)
