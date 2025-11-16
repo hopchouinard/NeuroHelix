@@ -151,8 +151,9 @@ def migrate(
         count = migrate_tsv_to_sqlite(input_path, output_path)
 
         console.print(f"[green]✓[/green] Migrated {count} prompts successfully")
-        console.print(f"\nTo use SQLite registry, update .nh.toml:")
-        console.print('[registry]\nbackend = "sqlite"')
+        console.print("\nTo use SQLite registry, set environment variables (e.g., in .env.local):")
+        console.print("NH_REGISTRY_BACKEND=sqlite")
+        console.print("NH_REGISTRY_SQLITE_PATH=config/prompts.db")
 
     except Exception as e:
         console.print(f"[red]Error:[/red] Migration failed: {e}")

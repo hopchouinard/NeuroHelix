@@ -11,9 +11,11 @@ from rich.table import Table
 from adapters.filesystem import FileLock, LockError
 from adapters.gemini_cli import GeminiCLIAdapter
 from config.settings_schema import WaveType
+from config.toml_config import ConfigLoader
 from services.ledger import LedgerService
 from services.manifest import ManifestService
 from services.registry import get_registry_provider
+from services.notifier import NotifierHooksConfig, NotifierService
 from services.runner import RunnerService
 
 app = typer.Typer()
@@ -82,11 +84,25 @@ def main(
 
     # Get repo root (assume we're running from orchestrator/)
     repo_root = Path.cwd().parent if Path.cwd().name == "orchestrator" else Path.cwd()
+    orchestrator_root = repo_root / "orchestrator" if repo_root.name != "orchestrator" else repo_root
+
+    config_loader = ConfigLoader(orchestrator_root)
+    config = config_loader.load()
 
     # Initialize services
     ledger_service = LedgerService(repo_root)
     manifest_service = ManifestService(repo_root)
     gemini_adapter = GeminiCLIAdapter(repo_root, enable_rate_limiting=True)
+
+    notifier_service = NotifierService(
+        repo_root,
+        NotifierHooksConfig(
+            enable_success=config.notifier.enable_success,
+            enable_failure=config.notifier.enable_failure,
+            success_script=repo_root / config.notifier.success_script,
+            failure_script=repo_root / config.notifier.failure_script,
+        ),
+    )
 
     # Load registry
     registry_path = repo_root / "orchestrator" / "config" / "prompts.tsv"
@@ -241,6 +257,18 @@ def main(
         stats = ledger_service.get_summary_stats(date)
         if stats["total_retries"] > 0:
             console.print(f"\nTotal retries: {stats['total_retries']}")
+
+        run_log_path = ledger_service.get_run_log_path(date)
+
+        if not dry_run:
+            if all_failed:
+                sent = notifier_service.notify_failures(date, all_failed, run_log_path)
+                if sent:
+                    console.print("[dim]Failure notifier dispatched[/dim]")
+            elif config.notifier.enable_success:
+                sent = notifier_service.notify_success(date, run_log_path)
+                if sent:
+                    console.print("[dim]Success notifier dispatched[/dim]")
 
         # Exit code
         if all_failed:

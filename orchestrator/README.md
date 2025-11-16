@@ -112,7 +112,7 @@ nh registry migrate --input config/prompts.tsv --output config/prompts.db
 ### Configuration Management
 
 ```bash
-# Initialize new .nh.toml config file
+# Initialize new .env.local config file
 nh config init
 
 # Overwrite existing config
@@ -121,7 +121,7 @@ nh config init --force
 # Show current configuration
 nh config show
 
-# Validate config file
+# Validate environment config
 nh config validate
 
 # Get specific config value
@@ -201,7 +201,7 @@ orchestrator/
 │   ├── prompts.tsv        # Prompt registry (TSV format)
 │   ├── prompts.db         # Prompt registry (SQLite format, optional)
 │   ├── settings_schema.py # Pydantic models
-│   └── toml_config.py     # TOML configuration loader
+│   └── toml_config.py     # .env configuration loader
 └── tests/                 # Test suite
     ├── unit/              # Unit tests
     ├── integration/       # Integration tests
@@ -245,10 +245,9 @@ The prompt registry defines execution policies for each prompt. Two backends are
 # Migrate from TSV to SQLite
 nh registry migrate
 
-# Configure in .nh.toml
-[registry]
-backend = "sqlite"
-sqlite_path = "config/prompts.db"
+# Configure in .env.local
+NH_REGISTRY_BACKEND=sqlite
+NH_REGISTRY_SQLITE_PATH=config/prompts.db
 
 # Or via environment variable
 export NH_REGISTRY_BACKEND=sqlite
@@ -267,27 +266,29 @@ Prompts execute in six waves with dependency tracking:
 
 #### Configuration System
 
-Multi-layer configuration with precedence handling:
+Configuration follows dotenv conventions:
 
-**Precedence Order:** CLI flags > .nh.toml > Environment variables > Defaults
+**Precedence Order:** CLI flags > environment variables (`.env`, `.env.local`, `.env.dev`) > defaults
 
 **Configuration Loader** (`config/toml_config.py`):
-- Loads .nh.toml from orchestrator directory
-- Applies environment variable overrides
-- Validates with Pydantic models
-- Caches config for performance
+- Loads the `.env*` stack automatically
+- Applies existing environment variables on top of file values
+- Issues a deprecation warning if `.nh.toml` is still present
+- Validates with Pydantic models and caches results
 
-**Config Sections:**
-- **orchestrator**: Model, concurrency, rate limiting, approval mode
-- **paths**: Repository root, data directory, logs directory
-- **registry**: Backend type (tsv/sqlite), file paths
-- **cloudflare**: API credentials, project name
+**Config Sections (via environment keys):**
+- **orchestrator**: `NH_DEFAULT_MODEL`, `NH_MAX_PARALLEL_JOBS`, `NH_ENABLE_RATE_LIMITING`, `GEMINI_APPROVAL_MODE`
+- **paths**: `NH_REPO_ROOT`, `NH_DATA_DIR`, `NH_LOGS_DIR`
+- **registry**: `NH_REGISTRY_BACKEND`, `NH_REGISTRY_TSV_PATH`, `NH_REGISTRY_SQLITE_PATH`
+- **cloudflare**: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_PROJECT_NAME`
+- **maintenance**: `NH_REQUIRE_CLEAN_GIT`
+- **notifier**: `ENABLE_NOTIFICATIONS`, `ENABLE_FAILURE_NOTIFICATIONS`, `NH_SUCCESS_NOTIFIER_SCRIPT`, `NH_FAILURE_NOTIFIER_SCRIPT`
 
 **Helper Methods:**
 - `get_config()` - Get merged configuration
 - `get_registry_path()` - Resolve registry path based on backend
 - `get_registry_backend()` - Determine active backend
-- `create_sample_config()` - Generate .nh.toml template
+- `create_sample_config()` - Generate `.env.local` template
 
 #### Telemetry & Logging
 
@@ -316,33 +317,40 @@ prompt_id	title	wave	category	model	tools	temperature	token_budget	timeout_sec	m
 ai_ecosystem_watch	AI Ecosystem Watch	search	Research	gemini-2.5-pro		0.7	32000	120	3	high	ai_ecosystem_watch.md	Track AI announcements
 ```
 
-### Configuration File (.nh.toml)
+### Environment Configuration (.env*)
 
-Configuration with precedence: **CLI flags > .nh.toml > Environment variables > Defaults**
+Create `.env.local` (and optional `.env`, `.env.dev`) in the repository root:
 
-Create a `.nh.toml` file in the `orchestrator/` directory:
+```bash
+# Orchestrator defaults
+NH_DEFAULT_MODEL=gemini-2.5-pro
+NH_MAX_PARALLEL_JOBS=4
+NH_ENABLE_RATE_LIMITING=true
+GEMINI_APPROVAL_MODE=yolo
 
-```toml
-[orchestrator]
-default_model = "gemini-2.5-pro"
-max_parallel_jobs = 4
-enable_rate_limiting = true
-approval_mode = "yolo"  # yolo, interactive, conservative
+# Paths
+NH_REPO_ROOT=
+NH_DATA_DIR=
+NH_LOGS_DIR=
 
-[paths]
-repo_root = ""  # Auto-detected if empty
-data_dir = ""   # Defaults to data/
-logs_dir = ""   # Defaults to logs/
+# Registry
+NH_REGISTRY_BACKEND=tsv
+NH_REGISTRY_TSV_PATH=config/prompts.tsv
+NH_REGISTRY_SQLITE_PATH=config/prompts.db
 
-[registry]
-backend = "tsv"  # tsv or sqlite
-tsv_path = "config/prompts.tsv"
-sqlite_path = "config/prompts.db"
+# Cloudflare
+CLOUDFLARE_API_TOKEN=
+CLOUDFLARE_ACCOUNT_ID=
+CLOUDFLARE_PROJECT_NAME=neurohelix-site
 
-[cloudflare]
-api_token = ""  # Use CLOUDFLARE_API_TOKEN env var instead
-account_id = ""
-project_name = "neurohelix-site"
+# Maintenance
+NH_REQUIRE_CLEAN_GIT=true
+
+# Notifier Hooks
+ENABLE_NOTIFICATIONS=false
+ENABLE_FAILURE_NOTIFICATIONS=false
+NH_SUCCESS_NOTIFIER_SCRIPT=scripts/notifiers/notify.sh
+NH_FAILURE_NOTIFIER_SCRIPT=scripts/notifiers/notify_failures.sh
 ```
 
 **Generate sample config:**
@@ -352,7 +360,7 @@ nh config init
 
 ### Environment Variables
 
-Environment variables override .nh.toml values:
+Environment variables override values loaded from `.env*` files:
 
 ```bash
 # Orchestrator settings
@@ -368,6 +376,13 @@ export NH_REGISTRY_SQLITE_PATH=config/prompts.db
 
 # Cloudflare settings
 export CLOUDFLARE_API_TOKEN=your_token
+
+# Maintenance + notifier
+export NH_REQUIRE_CLEAN_GIT=true
+export ENABLE_NOTIFICATIONS=false
+export ENABLE_FAILURE_NOTIFICATIONS=true
+export NH_SUCCESS_NOTIFIER_SCRIPT=scripts/notifiers/notify.sh
+export NH_FAILURE_NOTIFIER_SCRIPT=scripts/notifiers/notify_failures.sh
 export CLOUDFLARE_ACCOUNT_ID=your_account_id
 export CLOUDFLARE_PROJECT_NAME=neurohelix-site
 

@@ -1,14 +1,18 @@
-"""TOML configuration file loader with precedence handling."""
+"""Environment-first configuration loader with legacy .nh.toml support."""
+
+from __future__ import annotations
 
 import os
+import warnings
 from pathlib import Path
 from typing import Any, Optional
 
 try:
     import tomllib  # Python 3.11+
-except ImportError:
+except ImportError:  # pragma: no cover
     import tomli as tomllib  # Fallback for older Python
 
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
 
@@ -47,19 +51,35 @@ class CloudflareConfig(BaseModel):
     )
 
 
-class NHConfig(BaseModel):
-    """Complete NH configuration."""
+class MaintenanceConfig(BaseModel):
+    """Maintenance operation options."""
 
-    orchestrator: OrchestratorConfig = Field(default_factory=OrchestratorConfig)
-    paths: PathsConfig = Field(default_factory=PathsConfig)
-    registry: RegistryConfig = Field(default_factory=RegistryConfig)
-    cloudflare: CloudflareConfig = Field(default_factory=CloudflareConfig)
+    require_clean_git: bool = Field(
+        default=True,
+        description="Require clean git working tree before destructive commands",
+    )
+
+
+class NotifierConfig(BaseModel):
+    """Notifier hook configuration."""
+
+    enable_success: bool = Field(default=False, description="Call success notifier script")
+    enable_failure: bool = Field(default=False, description="Call failure notifier script")
+    success_script: str = Field(
+        default="scripts/notifiers/notify.sh",
+        description="Path to success notifier script",
+    )
+    failure_script: str = Field(
+        default="scripts/notifiers/notify_failures.sh",
+        description="Path to failure notifier script",
+    )
 
 
 class ConfigLoader:
-    """Configuration loader with precedence: CLI flags > .nh.toml > env vars > defaults."""
+    """Configuration loader with precedence: CLI flags > .env* > legacy files > defaults."""
 
-    DEFAULT_CONFIG_NAME = ".nh.toml"
+    DEFAULT_CONFIG_NAME = ".env.local"
+    ENV_FILENAMES = (".env", ".env.local", ".env.dev")
 
     def __init__(self, repo_root: Optional[Path] = None):
         """Initialize config loader.
@@ -69,7 +89,10 @@ class ConfigLoader:
         """
         self.repo_root = repo_root or Path.cwd()
         self.config_path = self.repo_root / self.DEFAULT_CONFIG_NAME
+        self.legacy_config_path = self.repo_root / ".nh.toml"
         self._config: Optional[NHConfig] = None
+        self._env_loaded = False
+        self._override_env = False
 
     def load(self, reload: bool = False) -> NHConfig:
         """Load configuration with precedence.
@@ -83,30 +106,48 @@ class ConfigLoader:
         if self._config is not None and not reload:
             return self._config
 
-        # Start with defaults
-        config_dict = {}
+        if reload:
+            self._config = None
+            self._env_loaded = False
+            self._override_env = True
 
-        # Layer 1: Load from .nh.toml if it exists
-        if self.config_path.exists():
-            with open(self.config_path, "rb") as f:
+        # Load .env files once
+        self._load_env_files()
+
+        config_dict: dict[str, Any] = {}
+
+        # Legacy fallback: .nh.toml
+        if self.legacy_config_path.exists():
+            warnings.warn(
+                ".nh.toml is deprecated. Move settings into .env/.env.local",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            with open(self.legacy_config_path, "rb") as f:
                 config_dict = tomllib.load(f)
 
-        # Layer 2: Override with environment variables
         config_dict = self._apply_env_overrides(config_dict)
 
         # Parse into Pydantic model
         self._config = NHConfig(**config_dict)
         return self._config
 
+    def _load_env_files(self) -> None:
+        """Load .env stack into process environment."""
+
+        if self._env_loaded:
+            return
+
+        for filename in self.ENV_FILENAMES:
+            env_path = self.repo_root / filename
+            if env_path.exists():
+                load_dotenv(env_path, override=self._override_env)
+
+        self._env_loaded = True
+        self._override_env = False
+
     def _apply_env_overrides(self, config_dict: dict) -> dict:
-        """Apply environment variable overrides.
-
-        Args:
-            config_dict: Configuration dictionary from TOML
-
-        Returns:
-            Updated configuration dictionary
-        """
+        """Apply environment variable overrides."""
         # Orchestrator settings
         if "NH_DEFAULT_MODEL" in os.environ:
             config_dict.setdefault("orchestrator", {})["default_model"] = os.environ[
@@ -170,6 +211,33 @@ class ConfigLoader:
                 "CLOUDFLARE_PROJECT_NAME"
             ]
 
+        # Maintenance settings
+        if "NH_REQUIRE_CLEAN_GIT" in os.environ:
+            config_dict.setdefault("maintenance", {})["require_clean_git"] = (
+                os.environ["NH_REQUIRE_CLEAN_GIT"].lower() in ("true", "1", "yes")
+            )
+
+        # Notifier settings (map from legacy env vars)
+        if "ENABLE_NOTIFICATIONS" in os.environ:
+            config_dict.setdefault("notifier", {})["enable_success"] = (
+                os.environ["ENABLE_NOTIFICATIONS"].lower() in ("true", "1", "yes")
+            )
+
+        if "ENABLE_FAILURE_NOTIFICATIONS" in os.environ:
+            config_dict.setdefault("notifier", {})["enable_failure"] = (
+                os.environ["ENABLE_FAILURE_NOTIFICATIONS"].lower() in ("true", "1", "yes")
+            )
+
+        if "NH_SUCCESS_NOTIFIER_SCRIPT" in os.environ:
+            config_dict.setdefault("notifier", {})["success_script"] = os.environ[
+                "NH_SUCCESS_NOTIFIER_SCRIPT"
+            ]
+
+        if "NH_FAILURE_NOTIFIER_SCRIPT" in os.environ:
+            config_dict.setdefault("notifier", {})["failure_script"] = os.environ[
+                "NH_FAILURE_NOTIFIER_SCRIPT"
+            ]
+
         return config_dict
 
     def get_registry_path(self) -> Path:
@@ -197,67 +265,47 @@ class ConfigLoader:
         return config.registry.backend
 
     def create_sample_config(self, output_path: Optional[Path] = None) -> Path:
-        """Create a sample .nh.toml configuration file.
+        """Create a sample .env configuration file."""
 
-        Args:
-            output_path: Path to write config (defaults to repo_root/.nh.toml)
-
-        Returns:
-            Path to created config file
-        """
         if output_path is None:
             output_path = self.config_path
 
-        sample_config = """# NeuroHelix Orchestrator Configuration
-# This file configures the Python orchestrator behavior.
-# Settings can be overridden by environment variables (see README).
+        sample_config = """# NeuroHelix environment configuration (.env.local)
+# Copy this file to .env.local and update values as needed.
 
-[orchestrator]
-# Default Gemini model for prompts
-default_model = "gemini-2.5-pro"
+# Orchestrator defaults
+NH_DEFAULT_MODEL=gemini-2.5-pro
+NH_MAX_PARALLEL_JOBS=4
+NH_ENABLE_RATE_LIMITING=true
+GEMINI_APPROVAL_MODE=yolo
 
-# Maximum parallel jobs for concurrent execution
-max_parallel_jobs = 4
+# Paths
+NH_REPO_ROOT=
+NH_DATA_DIR=
+NH_LOGS_DIR=
 
-# Enable rate limiting to avoid API quota exhaustion
-enable_rate_limiting = true
+# Registry
+NH_REGISTRY_BACKEND=tsv
+NH_REGISTRY_TSV_PATH=config/prompts.tsv
+NH_REGISTRY_SQLITE_PATH=config/prompts.db
 
-# Gemini CLI approval mode (yolo, interactive, or conservative)
-approval_mode = "yolo"
+# Cloudflare
+CLOUDFLARE_API_TOKEN=
+CLOUDFLARE_ACCOUNT_ID=
+CLOUDFLARE_PROJECT_NAME=neurohelix-site
 
-[paths]
-# Repository root (defaults to current directory if not set)
-# repo_root = "/path/to/neurohelix"
+# Maintenance
+NH_REQUIRE_CLEAN_GIT=true
 
-# Custom data directory (defaults to repo_root/data)
-# data_dir = "/path/to/data"
-
-# Custom logs directory (defaults to repo_root/logs)
-# logs_dir = "/path/to/logs"
-
-[registry]
-# Registry backend: "tsv" or "sqlite"
-backend = "tsv"
-
-# Path to SQLite database (relative to repo_root)
-sqlite_path = "config/prompts.db"
-
-# Path to TSV registry (relative to repo_root)
-tsv_path = "config/prompts.tsv"
-
-[cloudflare]
-# Cloudflare API token (can also use CLOUDFLARE_API_TOKEN env var)
-# api_token = "${CLOUDFLARE_API_TOKEN}"
-
-# Cloudflare account ID (optional)
-# account_id = "your-account-id"
-
-# Cloudflare Pages project name
-project_name = "neurohelix-site"
+# Notifiers
+ENABLE_NOTIFICATIONS=false
+ENABLE_FAILURE_NOTIFICATIONS=false
+NH_SUCCESS_NOTIFIER_SCRIPT=scripts/notifiers/notify.sh
+NH_FAILURE_NOTIFIER_SCRIPT=scripts/notifiers/notify_failures.sh
 """
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(sample_config)
+        output_path.write_text(sample_config.strip() + "\n", encoding="utf-8")
         return output_path
 
 
@@ -272,3 +320,12 @@ def get_config(repo_root: Optional[Path] = None) -> NHConfig:
     """
     loader = ConfigLoader(repo_root)
     return loader.load()
+class NHConfig(BaseModel):
+    """Complete NH configuration."""
+
+    orchestrator: OrchestratorConfig = Field(default_factory=OrchestratorConfig)
+    paths: PathsConfig = Field(default_factory=PathsConfig)
+    registry: RegistryConfig = Field(default_factory=RegistryConfig)
+    cloudflare: CloudflareConfig = Field(default_factory=CloudflareConfig)
+    maintenance: MaintenanceConfig = Field(default_factory=MaintenanceConfig)
+    notifier: NotifierConfig = Field(default_factory=NotifierConfig)

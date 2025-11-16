@@ -26,7 +26,7 @@ Every morning, wake up to an intelligent synthesis dashboard published to your c
 #### Python Orchestrator (NEW) 🐍
 - ✅ **Modern CLI Framework** - Typer-based CLI with rich console output
 - ✅ **SQLite Registry Backend** - Structured database with schema versioning and migrations
-- ✅ **TOML Configuration** - `.nh.toml` file with multi-layer precedence (CLI > TOML > env > defaults)
+- ✅ **.env Configuration** - `.env`, `.env.local`, `.env.dev` stack with dotenv loading
 - ✅ **Registry Migration** - Easy TSV → SQLite migration with `nh registry migrate`
 - ✅ **Configuration Management** - `nh config init/show/validate/get` commands
 - ✅ **Pydantic Validation** - Type-safe configuration and registry schemas
@@ -167,7 +167,7 @@ NeuroHelix now includes a **production-ready Python orchestrator** as a modern a
 
 - **Type-Safe** - Pydantic schemas validate all configuration and registry data
 - **SQLite Backend** - Optional structured database for prompt registry with migrations
-- **TOML Configuration** - `.nh.toml` file with multi-layer precedence handling
+- **.env Configuration** - `.env`, `.env.local`, `.env.dev` stack loaded automatically
 - **Rich Output** - Beautiful terminal tables and formatted console output
 - **Comprehensive Testing** - 29 unit tests with 90%+ coverage
 - **Better Observability** - Structured JSONL telemetry and audit logs
@@ -215,13 +215,13 @@ nh registry list --backend sqlite
 
 **Configuration Management:**
 ```bash
-# Create sample .nh.toml config file
+# Create sample .env.local config file
 nh config init
 
 # Show current configuration
 nh config show
 
-# Validate config file
+# Validate environment config
 nh config validate
 
 # Get specific config value
@@ -265,34 +265,41 @@ nh automation install
 nh automation status
 ```
 
-#### Configuration File (.nh.toml)
+#### Environment Configuration
 
-Create `.nh.toml` in the `orchestrator/` directory:
+Create `.env.local` in the repository root (orchestrator loads `.env`, `.env.local`, `.env.dev` automatically):
 
-```toml
-[orchestrator]
-default_model = "gemini-2.5-pro"
-max_parallel_jobs = 4
-enable_rate_limiting = true
-approval_mode = "yolo"  # yolo, interactive, conservative
+```bash
+# Orchestrator defaults
+NH_DEFAULT_MODEL=gemini-2.5-pro
+NH_MAX_PARALLEL_JOBS=4
+NH_ENABLE_RATE_LIMITING=true
+GEMINI_APPROVAL_MODE=yolo
 
-[paths]
-repo_root = ""  # Auto-detected if empty
-data_dir = ""   # Defaults to data/
-logs_dir = ""   # Defaults to logs/
+# Paths
+NH_REPO_ROOT=
+NH_DATA_DIR=
+NH_LOGS_DIR=
 
-[registry]
-backend = "tsv"  # tsv or sqlite
-tsv_path = "config/prompts.tsv"
-sqlite_path = "config/prompts.db"
+# Registry
+NH_REGISTRY_BACKEND=tsv
+NH_REGISTRY_TSV_PATH=config/prompts.tsv
+NH_REGISTRY_SQLITE_PATH=config/prompts.db
 
-[cloudflare]
-api_token = ""  # Use CLOUDFLARE_API_TOKEN env var instead
-account_id = ""
-project_name = "neurohelix-site"
+# Cloudflare
+CLOUDFLARE_API_TOKEN=
+CLOUDFLARE_ACCOUNT_ID=
+CLOUDFLARE_PROJECT_NAME=neurohelix-site
+
+# Maintenance + notifier
+NH_REQUIRE_CLEAN_GIT=true
+ENABLE_NOTIFICATIONS=false
+ENABLE_FAILURE_NOTIFICATIONS=false
+NH_SUCCESS_NOTIFIER_SCRIPT=scripts/notifiers/notify.sh
+NH_FAILURE_NOTIFIER_SCRIPT=scripts/notifiers/notify_failures.sh
 ```
 
-**Configuration Precedence:** CLI flags > .nh.toml > Environment variables > Defaults
+**Configuration Precedence:** CLI flags > environment variables (including `.env*`) > defaults
 
 #### SQLite Registry Backend
 
@@ -303,8 +310,8 @@ Migrate from TSV to SQLite for better performance and structure:
 cd orchestrator
 nh registry migrate
 
-# Update config to use SQLite
-nh config init  # Edit .nh.toml and set backend = "sqlite"
+# Update config to use SQLite (edit `.env.local`)
+nh config init
 
 # Or use environment variable
 export NH_REGISTRY_BACKEND=sqlite

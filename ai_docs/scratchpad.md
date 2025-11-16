@@ -130,3 +130,23 @@ Please make sure to ask any clarifying question necessary to make absolutely cer
   - Core parity is close but not complete. Both ecosystems can run the daily prompts, clean artifacts, reprocess, publish, and install automation. However, Bash still owns Cloudflare retracts, git-safety guards, automated notifications, and the “force today” flow that kills an in-flight pipeline before rerunning.
   - Python brings significant net-new tooling. Configuration, registry management, diagnostics, structured telemetry, and the parity harness are all new capabilities that don’t exist in the Bash world.
   - Operational gaps remain before decommissioning Bash. If you need automatic notifications, cleanup-linked Cloudflare awareness, or an operator-friendly “nuke today and rerun” action, the Bash scripts are still required. Python equivalents would need git-safety hooks plus deeper integration with notifier/publish scripts to claim full feature parity.
+
+---
+
+## Full test plan for orchestrator
+
+  1. Run Python CLI test suite
+      - From repo root: ./tests/test_python_cli.sh.
+      - Expect pytest to execute ~133 tests with coverage (integration + unit tests for git safety, Cloudflare, notifier, etc.) and exit 0.
+  2. Exercise cleanup command
+      - Dirty repo check: create a temp file (touch foo.tmp) and run cd orchestrator && poetry run nh cleanup --dry-run. Command should refuse to proceed and list dirty files.
+      - Clean tree path: remove the temp file, rerun nh cleanup --dry-run. Confirm console output lists planned deletions, Cloudflare context, and JSON mode (--json) reports git_clean: true. Check logs/audit/*.jsonl for entries including cloudflare_deploy_id.
+  3. Verify reprocess guard
+      - Make another working-tree change, run nh reprocess 2025-01-01 --dry-run; expect an error citing dirty git state.
+      - Remove changes and rerun to ensure it delegates to nh run (dry run) successfully.
+  4. Notifier hooks
+  5. Cloudflare context
+      - Run nh cleanup --dry-run; ensure output logs “Latest deployment ID: …” and the audit log entry contains IDs.
+  6. Docs/config sanity
+      - Open orchestrator/README.md and .nh.toml to confirm [maintenance] and [notifier] sections match expectations.
+      - Run nh config init in a temp directory to verify the new sections populate correctly.

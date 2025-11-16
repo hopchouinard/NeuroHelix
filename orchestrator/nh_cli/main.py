@@ -32,7 +32,7 @@ app.add_typer(cleanup.app, name="cleanup", help="Remove temporary files and stal
 app.add_typer(publish.app, name="publish", help="Trigger export and Cloudflare deploy")
 app.add_typer(automation.app, name="automation", help="Manage LaunchD automation")
 app.add_typer(registry.app, name="registry", help="Validate and inspect prompt registry")
-app.add_typer(config.app, name="config", help="Manage .nh.toml configuration")
+app.add_typer(config.app, name="config", help="Manage .env configuration")
 app.add_typer(diag.app, name="diag", help="Print diagnostics and system status")
 app.add_typer(compare.app, name="compare", help="Compare Bash vs Python outputs")
 

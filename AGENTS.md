@@ -27,10 +27,10 @@
 ## Commit & Pull Request Guidelines
 - Follow Conventional Commits as seen in history (`feat:`, `docs:`, `chore:`, etc.) and describe the scope briefly (e.g., `feat: add sqlite registry provider`).
 - Each PR should explain the motivation, list affected subsystems (Bash orchestrator, Python CLI, site), link to any dashboards/tests, and attach screenshots or terminal output when UI/tests change.
-- Ensure branches are rebased onto `main`, CI passes `pytest` + Bash tests + `pnpm build`, and configuration secrets (.env, `.nh.toml`) are excluded from commits.
+- Ensure branches are rebased onto `main`, CI passes `pytest` + Bash tests + `pnpm build`, and configuration secrets (any `.env*` files) are excluded from commits.
 
 ## Security & Configuration Tips
-- Keep API tokens and Gemini credentials in `config/env.sh` or `.nh.toml`; never hardcode secrets in scripts, Astro envs, or manifests.
+- Keep API tokens and Gemini credentials in `config/env.sh` or `.env*` files; never hardcode secrets in scripts, Astro envs, or manifests.
 - Use `nh config validate` (Python) or `./scripts/orchestrator.sh --dry-run` (Bash) before deploying changes to confirm schema compatibility and safe file operations.
 - Review generated artifacts in `data/` for sensitive content before publishing to Cloudflare Pages or committing sample outputs.
 </INSTRUCTIONS>

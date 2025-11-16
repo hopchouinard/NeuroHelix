@@ -1,5 +1,7 @@
 """Audit log service for maintenance operations."""
 
+from __future__ import annotations
+
 import os
 from datetime import datetime
 from pathlib import Path
@@ -65,6 +67,9 @@ class AuditService:
         removed_locks: list[str],
         bytes_freed: int,
         dry_run: bool = False,
+        git_clean: bool = True,
+        dirty_files: list[str] | None = None,
+        cloudflare_deploy_id: str | None = None,
     ) -> None:
         """Log a cleanup operation.
 
@@ -80,6 +85,9 @@ class AuditService:
             "files_removed": len(removed_files),
             "locks_removed": len(removed_locks),
             "bytes_freed": bytes_freed,
+            "git_clean": git_clean,
+            "dirty_files": dirty_files or [],
+            "cloudflare_deploy_id": cloudflare_deploy_id,
         }
 
         affected_paths = removed_files + removed_locks

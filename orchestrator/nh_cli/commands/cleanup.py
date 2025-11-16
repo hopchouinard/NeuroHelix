@@ -7,7 +7,10 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from config.toml_config import ConfigLoader
 from services.audit import AuditService
+from services.cloudflare import CloudflareService
+from services.git_safety import GitDirtyError, ensure_clean_repo, get_git_status
 
 app = typer.Typer()
 console = Console()
@@ -32,6 +35,11 @@ def main(
         "--json",
         help="Output results as JSON",
     ),
+    allow_dirty: bool = typer.Option(
+        False,
+        "--allow-dirty",
+        help="Allow cleanup to proceed even if git working tree is dirty",
+    ),
 ):
     """Clean up temporary files, stale locks, and old artifacts.
 
@@ -51,8 +59,39 @@ def main(
     # Get repo root
     repo_root = Path.cwd().parent if Path.cwd().name == "orchestrator" else Path.cwd()
 
+    # Load config for maintenance + Cloudflare settings
+    orchestrator_root = repo_root / "orchestrator" if repo_root.name != "orchestrator" else repo_root
+    config_loader = ConfigLoader(orchestrator_root)
+    config = config_loader.load()
+
     # Initialize audit service
     audit_service = AuditService(repo_root)
+
+    require_clean = config.maintenance.require_clean_git
+    git_status = None
+    try:
+        git_status = ensure_clean_repo(repo_root, allow_dirty or not require_clean)
+    except GitDirtyError as err:
+        status = get_git_status(repo_root)
+        if json_output:
+            import json
+
+            console.print(
+                json.dumps(
+                    {
+                        "error": str(err),
+                        "git_clean": False,
+                        "dirty_files": status.dirty_files,
+                    }
+                )
+            )
+        else:
+            console.print(f"[red]Error:[/red] {err}", style="bold")
+            if status.dirty_files:
+                console.print("\nDirty files:")
+                for line in status.dirty_files:
+                    console.print(f"  {line}")
+        raise typer.Exit(code=10)
 
     # Display header
     if not json_output:
@@ -69,6 +108,30 @@ def main(
     removed_files = []
     removed_locks = []
     bytes_freed = 0
+
+    git_status = git_status or get_git_status(repo_root)
+
+    # Cloudflare context for parity with Bash cleanup
+    cloudflare_service = CloudflareService(
+        repo_root=repo_root,
+        project_name=config.cloudflare.project_name,
+        api_token=config.cloudflare.api_token,
+    )
+    cloudflare_deploy_id = None
+    if not json_output:
+        console.print("Cloudflare:")
+    if cloudflare_service.is_configured:
+        cloudflare_deploy_id = cloudflare_service.get_latest_deployment_id()
+        if not json_output:
+            if cloudflare_deploy_id:
+                console.print(f"  Latest deployment ID: {cloudflare_deploy_id}")
+            else:
+                console.print("  Unable to determine latest deployment")
+    else:
+        if not json_output:
+            console.print("  Skipped (missing token or project name)")
+    if not json_output:
+        console.print()
 
     # 1. Clean stale locks
     locks_dir = repo_root / "var" / "locks"
@@ -204,6 +267,9 @@ def main(
             removed_locks=removed_locks,
             bytes_freed=bytes_freed,
             dry_run=dry_run,
+            git_clean=git_status.clean,
+            dirty_files=git_status.dirty_files,
+            cloudflare_deploy_id=cloudflare_deploy_id,
         )
 
     # Display results
@@ -215,6 +281,9 @@ def main(
             "locks_removed": len(removed_locks),
             "bytes_freed": bytes_freed,
             "dry_run": dry_run,
+            "git_clean": git_status.clean,
+            "dirty_files": git_status.dirty_files,
+            "cloudflare_deploy_id": cloudflare_deploy_id,
         }
         console.print(json.dumps(result))
     else:

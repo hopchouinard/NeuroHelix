@@ -1,4 +1,4 @@
-"""Config command - Manage .nh.toml configuration."""
+"""Config command - Manage .env-based configuration."""
 
 from pathlib import Path
 
@@ -21,17 +21,7 @@ def init(
         help="Overwrite existing config file",
     ),
 ):
-    """Initialize a new .nh.toml configuration file.
-
-    Creates a sample configuration file with all available options
-    and default values.
-
-    Examples:
-
-        nh config init              # Create .nh.toml with defaults
-
-        nh config init --force      # Overwrite existing config
-    """
+    """Initialize a new .env.local configuration file with sample values."""
     # Get repo root
     repo_root = Path.cwd().parent if Path.cwd().name == "orchestrator" else Path.cwd()
     orchestrator_root = repo_root / "orchestrator"
@@ -49,7 +39,7 @@ def init(
     try:
         created_path = config_loader.create_sample_config()
         console.print(f"[green]✓[/green] Created config file: {created_path}")
-        console.print("\nEdit the file to customize orchestrator behavior.")
+        console.print("\nEdit the file (key=value pairs) to customize orchestrator behavior.")
 
     except Exception as e:
         console.print(f"[red]Error:[/red] Failed to create config: {e}")
@@ -65,17 +55,7 @@ def show(
         help="Show default values for unset options",
     ),
 ):
-    """Show current configuration.
-
-    Displays the merged configuration from .nh.toml and environment
-    variables with precedence applied.
-
-    Examples:
-
-        nh config show              # Show current config
-
-        nh config show --defaults   # Include default values
-    """
+    """Show current configuration resolved from .env files and env vars."""
     # Get repo root
     repo_root = Path.cwd().parent if Path.cwd().name == "orchestrator" else Path.cwd()
     orchestrator_root = repo_root / "orchestrator"
@@ -118,11 +98,17 @@ def show(
 
         # Show config file location
         config_loader = ConfigLoader(orchestrator_root)
-        console.print(f"\n[dim]Config file: {config_loader.config_path}[/dim]")
+        console.print(f"\n[dim]Primary .env file: {config_loader.config_path}[/dim]")
         if config_loader.config_path.exists():
-            console.print("[dim]Status: Loaded from file[/dim]")
+            console.print("[dim]Status: Loaded from .env stack[/dim]")
         else:
-            console.print("[dim]Status: Using defaults (no .nh.toml found)[/dim]")
+            console.print("[dim]Status: Using defaults + environment variables[/dim]")
+
+        if config_loader.legacy_config_path.exists():
+            console.print(
+                f"[yellow]Warning:[/yellow] Legacy file detected: {config_loader.legacy_config_path}"
+            )
+            console.print("  Values from .nh.toml will be removed in a future release.")
 
     except Exception as e:
         console.print(f"[red]Error:[/red] Failed to load config: {e}")
@@ -131,33 +117,21 @@ def show(
 
 @app.command("validate")
 def validate():
-    """Validate configuration file.
-
-    Checks .nh.toml for syntax errors and invalid values.
-
-    Examples:
-
-        nh config validate
-    """
+    """Validate active configuration regardless of source (.env or env vars)."""
     # Get repo root
     repo_root = Path.cwd().parent if Path.cwd().name == "orchestrator" else Path.cwd()
     orchestrator_root = repo_root / "orchestrator"
 
     config_loader = ConfigLoader(orchestrator_root)
 
-    if not config_loader.config_path.exists():
-        console.print(
-            f"[yellow]Warning:[/yellow] No config file found: {config_loader.config_path}"
-        )
-        console.print("Using default values. Run 'nh config init' to create one.")
-        raise typer.Exit(code=0)
-
     try:
         # Try to load config
         config = config_loader.load(reload=True)
 
-        console.print(f"\n[bold]Validating Configuration[/bold]")
-        console.print(f"File: {config_loader.config_path}\n")
+        console.print("\n[bold]Validating Configuration[/bold]")
+        console.print(
+            f"Source: {config_loader.config_path if config_loader.config_path.exists() else 'environment only'}\n"
+        )
 
         # Perform validation checks
         errors = []

@@ -131,7 +131,7 @@ The Python orchestrator is **production-ready for daily operations** with all co
 - ✅ JSON output mode across all commands
 - ✅ Reduced concurrency classes for API-friendly execution
 - ✅ **SQLite registry backend** with migration support
-- ✅ **`.nh.toml` configuration file** with precedence handling
+- ✅ **`.env` configuration stack** with precedence handling
 - ✅ Configuration management CLI (`nh config` commands)
 - ✅ Registry migration CLI (`nh registry migrate`)
 
@@ -252,8 +252,8 @@ nh automation install --help
 **Implementation:** `config/toml_config.py` (274 lines)
 
 **Features:**
-- `.nh.toml` configuration file support
-- Multi-layer precedence: CLI flags > .nh.toml > env vars > defaults
+- `.env` configuration stack loading (dotenv)
+- Multi-layer precedence: CLI flags > environment vars (.env) > defaults
 - Pydantic validation for all config values
 - Four config sections: orchestrator, paths, registry, cloudflare
 - Config management CLI: `nh config init/show/validate/get`
@@ -276,7 +276,7 @@ nh automation install --help
 
 **CLI Commands:**
 ```bash
-nh config init          # Create sample .nh.toml
+nh config init          # Create sample .env.local
 nh config show          # Display current config
 nh config validate      # Check config file
 nh config get key       # Get specific value

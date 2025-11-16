@@ -8,7 +8,9 @@ from typing import Optional
 import typer
 from rich.console import Console
 
+from config.toml_config import ConfigLoader
 from services.audit import AuditService
+from services.git_safety import GitDirtyError, ensure_clean_repo, get_git_status
 
 app = typer.Typer()
 console = Console()
@@ -27,6 +29,11 @@ def main(
         False,
         "--dry-run",
         help="Preview actions without executing",
+    ),
+    allow_dirty: bool = typer.Option(
+        False,
+        "--allow-dirty",
+        help="Allow reprocess even if git working tree is dirty",
     ),
 ):
     """Rebuild artifacts for a past day.
@@ -52,6 +59,22 @@ def main(
 
     # Get repo root
     repo_root = Path.cwd().parent if Path.cwd().name == "orchestrator" else Path.cwd()
+
+    orchestrator_root = repo_root / "orchestrator" if repo_root.name != "orchestrator" else repo_root
+    config_loader = ConfigLoader(orchestrator_root)
+    config = config_loader.load()
+
+    require_clean = config.maintenance.require_clean_git
+    try:
+        ensure_clean_repo(repo_root, allow_dirty or not require_clean)
+    except GitDirtyError as err:
+        status = get_git_status(repo_root)
+        console.print(f"[red]Error:[/red] {err}", style="bold")
+        if status.dirty_files:
+            console.print("\nDirty files:")
+            for line in status.dirty_files:
+                console.print(f"  {line}")
+        raise typer.Exit(code=10)
 
     # Check if date has existing data
     outputs_dir = repo_root / "data" / "outputs" / "daily" / date
