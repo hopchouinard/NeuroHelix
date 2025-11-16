@@ -194,6 +194,7 @@ def get_registry_provider(registry_path: Path, format_type: str = "tsv") -> Regi
     if format_type == "tsv":
         return TSVRegistryProvider(registry_path)
     elif format_type == "sqlite":
+        from services.sqlite_registry import SQLiteRegistryProvider
         return SQLiteRegistryProvider(registry_path)
     else:
         raise ValueError(f"Unsupported registry format: {format_type}")

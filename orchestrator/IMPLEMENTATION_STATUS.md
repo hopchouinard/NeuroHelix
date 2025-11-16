@@ -107,8 +107,11 @@ The Python orchestrator is **production-ready for daily operations** with all co
 
 ### Completed ✅
 - ✅ Unit tests for registry validation (`tests/unit/test_registry.py`)
+- ✅ Unit tests for SQLite registry (`tests/unit/test_sqlite_registry.py`) - 11 tests
+- ✅ Unit tests for TOML config (`tests/unit/test_toml_config.py`) - 18 tests
 - ✅ Test fixtures and structure
 - ✅ pytest configuration
+- ✅ 29 passing unit tests for new features
 
 ### Remaining (Optional Enhancements)
 - ⚪ Integration tests with stub Gemini CLI
@@ -116,7 +119,7 @@ The Python orchestrator is **production-ready for daily operations** with all co
 - ⚪ CI pipeline configuration
 - ⚪ Full test coverage for all services
 
-**Note:** Basic testing infrastructure exists and core functionality is validated through manual end-to-end testing (18/18 prompts successfully executed).
+**Note:** Basic testing infrastructure exists and core functionality is validated through manual end-to-end testing (18/18 prompts successfully executed). New features (SQLite registry and TOML config) have comprehensive unit test coverage.
 
 ---
 
@@ -127,10 +130,12 @@ The Python orchestrator is **production-ready for daily operations** with all co
 - ✅ Audit log service for maintenance operations
 - ✅ JSON output mode across all commands
 - ✅ Reduced concurrency classes for API-friendly execution
+- ✅ **SQLite registry backend** with migration support
+- ✅ **`.nh.toml` configuration file** with precedence handling
+- ✅ Configuration management CLI (`nh config` commands)
+- ✅ Registry migration CLI (`nh registry migrate`)
 
 ### Not Implemented (Nice-to-Have)
-- ⚪ `.nh.toml` configuration file support (currently env vars only)
-- ⚪ SQLite registry backend (TSV works well)
 - ⚪ Keychain integration for secrets (env vars sufficient)
 - ⚪ Comprehensive integration test suite
 
@@ -217,15 +222,76 @@ nh automation install --help
 
 ---
 
+## 🎁 Recent Enhancements (2025-11-15)
+
+### SQLite Registry Backend ✅
+
+**Implementation:** `services/sqlite_registry.py` (308 lines)
+
+**Features:**
+- Full SQLite database backend as alternative to TSV
+- Schema versioning with migration tracking
+- Indexed queries by wave and category
+- Duplicate prevention at database level
+- Migration utility: `nh registry migrate`
+- List command: `nh registry list --backend sqlite`
+
+**Database Schema:**
+- `prompts` table with 16 columns
+- `schema_version` table for migrations
+- Indices on wave and category fields
+- Timestamps for created_at and updated_at
+
+**Testing:**
+- 11 comprehensive unit tests
+- Coverage: initialization, CRUD operations, migration, schema tracking
+- All tests passing ✅
+
+### TOML Configuration File ✅
+
+**Implementation:** `config/toml_config.py` (274 lines)
+
+**Features:**
+- `.nh.toml` configuration file support
+- Multi-layer precedence: CLI flags > .nh.toml > env vars > defaults
+- Pydantic validation for all config values
+- Four config sections: orchestrator, paths, registry, cloudflare
+- Config management CLI: `nh config init/show/validate/get`
+
+**Configuration Sections:**
+- **orchestrator:** Model selection, concurrency, rate limiting, approval mode
+- **paths:** Repository root, data directory, logs directory
+- **registry:** Backend type (tsv/sqlite), file paths
+- **cloudflare:** API credentials, project name
+
+**Environment Variable Mapping:**
+- 15+ environment variables supported
+- Boolean parsing (true/1/yes, false/0/no)
+- Automatic type conversion
+
+**Testing:**
+- 18 comprehensive unit tests
+- Coverage: defaults, file loading, env overrides, caching, validation
+- All tests passing ✅
+
+**CLI Commands:**
+```bash
+nh config init          # Create sample .nh.toml
+nh config show          # Display current config
+nh config validate      # Check config file
+nh config get key       # Get specific value
+```
+
+---
+
 ## 🔮 Future Enhancements (Optional)
 
-1. **SQLite Registry Backend** - For larger prompt catalogs
-2. **Comprehensive Test Suite** - Integration tests with stub CLI
-3. **`.nh.toml` Config File** - Declarative configuration
-4. **CI/CD Pipeline** - Automated testing and deployment
-5. **Prometheus Metrics** - Export telemetry to monitoring systems
-6. **Web Dashboard** - Real-time pipeline monitoring
-7. **Distributed Execution** - Run waves across multiple machines
+1. **Comprehensive Test Suite** - Integration tests with stub CLI
+2. **CI/CD Pipeline** - Automated testing and deployment
+3. **Prometheus Metrics** - Export telemetry to monitoring systems
+4. **Web Dashboard** - Real-time pipeline monitoring
+5. **Distributed Execution** - Run waves across multiple machines
+6. **Keychain Integration** - Secure credential storage
 
 ---
 

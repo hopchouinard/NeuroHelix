@@ -10,6 +10,8 @@ Python-based orchestrator for the NeuroHelix automated AI research pipeline. Thi
 - ✅ Project structure and packaging (Poetry/uv)
 - ✅ Pydantic models for configuration and registry
 - ✅ TSV registry loader with validation
+- ✅ SQLite registry backend with migration support
+- ✅ TOML configuration file with precedence handling
 - ✅ Filesystem utilities (locking, hashing, paths)
 - ✅ Manifest and dependency tracking
 - ✅ Ledger and audit logging
@@ -90,8 +92,41 @@ nh run --dry-run
 # Validate prompt registry
 nh registry validate
 
-# Validate with specific format
-nh registry validate --format tsv
+# Validate with specific backend
+nh registry validate --backend tsv
+nh registry validate --backend sqlite
+
+# List all prompts
+nh registry list
+
+# List prompts from SQLite backend
+nh registry list --backend sqlite
+
+# Migrate TSV registry to SQLite
+nh registry migrate
+
+# Migrate with custom paths
+nh registry migrate --input config/prompts.tsv --output config/prompts.db
+```
+
+### Configuration Management
+
+```bash
+# Initialize new .nh.toml config file
+nh config init
+
+# Overwrite existing config
+nh config init --force
+
+# Show current configuration
+nh config show
+
+# Validate config file
+nh config validate
+
+# Get specific config value
+nh config get orchestrator.default_model
+nh config get registry.backend
 ```
 
 ### Maintenance Commands
@@ -146,14 +181,16 @@ orchestrator/
 │   ├── main.py            # Main app entry point
 │   └── commands/          # Command modules
 │       ├── run.py         # Pipeline execution
-│       ├── registry.py    # Registry validation
+│       ├── registry.py    # Registry validation & migration
+│       ├── config.py      # Configuration management
 │       ├── diag.py        # Diagnostics
 │       ├── cleanup.py     # Cleanup operations
 │       ├── reprocess.py   # Reprocessing
 │       ├── publish.py     # Publishing
 │       └── automation.py  # LaunchD management
 ├── services/              # Core services
-│   ├── registry.py        # Registry loading/validation
+│   ├── registry.py        # Registry provider interface (TSV)
+│   ├── sqlite_registry.py # SQLite registry provider
 │   ├── runner.py          # Wave scheduling & execution
 │   ├── manifest.py        # Dependency tracking
 │   └── ledger.py          # Telemetry & logging
@@ -162,7 +199,9 @@ orchestrator/
 │   └── filesystem.py      # File operations & locking
 ├── config/                # Configuration
 │   ├── prompts.tsv        # Prompt registry (TSV format)
-│   └── settings_schema.py # Pydantic models
+│   ├── prompts.db         # Prompt registry (SQLite format, optional)
+│   ├── settings_schema.py # Pydantic models
+│   └── toml_config.py     # TOML configuration loader
 └── tests/                 # Test suite
     ├── unit/              # Unit tests
     ├── integration/       # Integration tests
@@ -173,18 +212,47 @@ orchestrator/
 
 #### Registry System
 
-The prompt registry (`config/prompts.tsv`) defines execution policies for each prompt:
+The prompt registry defines execution policies for each prompt. Two backends are supported:
 
+**TSV Backend** (`config/prompts.tsv`) - Default, simple tab-separated format:
+- Human-readable and easy to edit
+- Version control friendly
+- Lightweight
+
+**SQLite Backend** (`config/prompts.db`) - Optional, structured database:
+- Faster queries for large registries
+- Schema versioning for migrations
+- Indexed lookups by wave and category
+- Prevents duplicate entries at database level
+
+**Common Fields:**
 - **prompt_id**: Unique identifier
 - **title**: Human-readable name
 - **wave**: Pipeline wave (search, aggregator, tagger, render, export, publish)
 - **category**: Grouping category
 - **model**: Gemini model to use
-- **temperature**: Temperature setting
+- **temperature**: Temperature setting (0.0-1.0)
+- **token_budget**: Maximum tokens to use
 - **timeout_sec**: Timeout in seconds
 - **max_retries**: Maximum retry attempts
 - **concurrency_class**: Concurrency level (sequential, low, medium, high)
 - **expected_outputs**: Output file pattern
+- **prompt**: The actual prompt text
+- **notes**: Optional description
+
+**Switching Backends:**
+```bash
+# Migrate from TSV to SQLite
+nh registry migrate
+
+# Configure in .nh.toml
+[registry]
+backend = "sqlite"
+sqlite_path = "config/prompts.db"
+
+# Or via environment variable
+export NH_REGISTRY_BACKEND=sqlite
+```
 
 #### Wave System
 
@@ -196,6 +264,30 @@ Prompts execute in six waves with dependency tracking:
 4. **render** - Generate HTML dashboard
 5. **export** - Create JSON payload
 6. **publish** - Deploy to Cloudflare
+
+#### Configuration System
+
+Multi-layer configuration with precedence handling:
+
+**Precedence Order:** CLI flags > .nh.toml > Environment variables > Defaults
+
+**Configuration Loader** (`config/toml_config.py`):
+- Loads .nh.toml from orchestrator directory
+- Applies environment variable overrides
+- Validates with Pydantic models
+- Caches config for performance
+
+**Config Sections:**
+- **orchestrator**: Model, concurrency, rate limiting, approval mode
+- **paths**: Repository root, data directory, logs directory
+- **registry**: Backend type (tsv/sqlite), file paths
+- **cloudflare**: API credentials, project name
+
+**Helper Methods:**
+- `get_config()` - Get merged configuration
+- `get_registry_path()` - Resolve registry path based on backend
+- `get_registry_backend()` - Determine active backend
+- `create_sample_config()` - Generate .nh.toml template
 
 #### Telemetry & Logging
 
@@ -224,31 +316,65 @@ prompt_id	title	wave	category	model	tools	temperature	token_budget	timeout_sec	m
 ai_ecosystem_watch	AI Ecosystem Watch	search	Research	gemini-2.5-pro		0.7	32000	120	3	high	ai_ecosystem_watch.md	Track AI announcements
 ```
 
-### Environment Variables
+### Configuration File (.nh.toml)
 
-```bash
-# Default Gemini model
-export NH_DEFAULT_MODEL=gemini-2.5-pro
+Configuration with precedence: **CLI flags > .nh.toml > Environment variables > Defaults**
 
-# Cloudflare API token
-export CLOUDFLARE_API_TOKEN=your_token
-
-# Repository root (optional, auto-detected)
-export NH_REPO_ROOT=/path/to/neurohelix
-```
-
-### Configuration File
-
-Optional `.nh.toml` in repo root:
+Create a `.nh.toml` file in the `orchestrator/` directory:
 
 ```toml
-[settings]
+[orchestrator]
 default_model = "gemini-2.5-pro"
 max_parallel_jobs = 4
-enable_static_site_publishing = true
-cloudflare_project_name = "neurohelix-site"
-lock_ttl_seconds = 7200
-cleanup_keep_days = 90
+enable_rate_limiting = true
+approval_mode = "yolo"  # yolo, interactive, conservative
+
+[paths]
+repo_root = ""  # Auto-detected if empty
+data_dir = ""   # Defaults to data/
+logs_dir = ""   # Defaults to logs/
+
+[registry]
+backend = "tsv"  # tsv or sqlite
+tsv_path = "config/prompts.tsv"
+sqlite_path = "config/prompts.db"
+
+[cloudflare]
+api_token = ""  # Use CLOUDFLARE_API_TOKEN env var instead
+account_id = ""
+project_name = "neurohelix-site"
+```
+
+**Generate sample config:**
+```bash
+nh config init
+```
+
+### Environment Variables
+
+Environment variables override .nh.toml values:
+
+```bash
+# Orchestrator settings
+export NH_DEFAULT_MODEL=gemini-2.5-pro
+export NH_MAX_PARALLEL_JOBS=8
+export NH_ENABLE_RATE_LIMITING=true
+export GEMINI_APPROVAL_MODE=yolo
+
+# Registry settings
+export NH_REGISTRY_BACKEND=sqlite
+export NH_REGISTRY_TSV_PATH=config/prompts.tsv
+export NH_REGISTRY_SQLITE_PATH=config/prompts.db
+
+# Cloudflare settings
+export CLOUDFLARE_API_TOKEN=your_token
+export CLOUDFLARE_ACCOUNT_ID=your_account_id
+export CLOUDFLARE_PROJECT_NAME=neurohelix-site
+
+# Path settings
+export NH_REPO_ROOT=/path/to/neurohelix
+export NH_DATA_DIR=custom/data
+export NH_LOGS_DIR=custom/logs
 ```
 
 ## Development
