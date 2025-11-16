@@ -25,8 +25,9 @@ PLIST_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
     <array>
         <string>{python_path}</string>
         <string>-m</string>
-        <string>nh_cli</string>
+        <string>nh_cli.main</string>
         <string>run</string>
+        <string>main</string>
     </array>
     <key>WorkingDirectory</key>
     <string>{repo_root}</string>
