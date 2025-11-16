@@ -12,13 +12,14 @@ from adapters.filesystem import FileLock, LockError
 from adapters.gemini_cli import GeminiCLIAdapter
 from config.settings_schema import WaveType
 from config.toml_config import ConfigLoader
+from nh_cli.utils.default_command_group import create_default_command_group
 from services.ledger import LedgerService
 from services.manifest import ManifestService
-from services.registry import get_registry_provider
 from services.notifier import NotifierHooksConfig, NotifierService
+from services.registry import get_registry_provider
 from services.runner import RunnerService
 
-app = typer.Typer()
+app = typer.Typer(cls=create_default_command_group("main"))
 console = Console()
 
 

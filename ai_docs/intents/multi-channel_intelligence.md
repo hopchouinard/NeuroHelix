@@ -183,3 +183,102 @@ NeuroHelix is no longer a research script.
 It is becoming a distributed cognition platform.
 
 ⸻
+
+## 🧠 NeuroHelix – Multi-Channel Intelligence feature plan
+
+This document outlines the new feature set for NeuroHelix, transforming it into a multi-channel intelligence system with layered cognition, selective search strategies, and diverse output formats.
+
+⸻
+
+## 1. Subject Probing Layer (Lightweight Intelligence Gatekeeper)
+
+This is the Perplexity/Sonar-Pro “probe first, think later” phase.
+Tiny queries, cheap calls, returning: is there news on this atomic subject today?
+
+It prevents the heavyweight cognition from wasting time hallucinating insights about yesterday’s stale bagel.
+
+⸻
+
+## 2. Dynamic Research Expansion (Adaptive Topic Tree Builder)
+
+Given probe results, auto-generate the daily research plan:
+
+- Which micro-subjects to hit
+- Which mid-level themes exist today
+- Which high-level domain buckets get populated
+
+This replaces your static list of research prompts with an emergent daily plan.
+
+⸻
+
+## 3. Multi-Tier Research Engine (Gemini CLI Agentic Cognition)
+
+Your heavy workers:
+
+- Deep agentic research
+- Tool use
+- Multi-hop reasoning
+- First-order insight
+- Cross-document synthesis
+
+This is your current NeuroHelix core, just modularized across micro, meso and macro layers of topic depth.
+
+⸻
+
+## 4. Cross-Day & Cross-Subject Meta-Cognition (Temporal Intelligence)
+
+This is the timeline stuff:
+
+- Daily deltas
+- Seven-day patterns
+- Thirty-day gradients
+- Annual drift
+- Recurrence detection
+
+Plus: discovering cross-domain themes that weren’t obvious from local subjects.
+
+This becomes the backbone of “insight you didn’t know you needed.”
+
+⸻
+
+## 5. Idea Factory v2 (Project-Spawn Engine)
+
+You already have version one of this.
+Version two would be:
+
+- Use the new multi-tier research data
+- Weight ideas by recurrence strength
+- Detect novel conceptual collisions
+- Rank candidates for potential POCs
+- Predict resource requirements
+- Track emerging invention lines
+
+This is chef’s kiss where the magic happens.
+
+⸻
+
+## 6. Multi-Modal Transformation Layer (Podcast, Alerts, Summaries)
+
+Three streams:
+
+- Long-form narrative (podcast personas)
+- Push notifications / emergency deltas
+- Micro-summaries (three-sentence “today’s shape”)
+
+This feature turns NeuroHelix from a research engine into a personal media machine.
+
+⸻
+
+## 7. Unified Compute Orchestration (Hybrid Local + Cloud Agents)
+
+The fully explicit architecture split:
+
+- Lightweight cloud calls (Perplexity, GPTo)
+- Agentic heavy calls (Gemini CLI)
+- Local embedding + vector DB
+- Local lightweight agent (Gemma-3-14B, QEM-314B)
+
+This feature makes sure the whole system behaves like a distributed cognition organism instead of a pile of scripts.
+
+⸻
+
