@@ -211,7 +211,7 @@ class RunnerService:
             if output_path.exists():
                 try:
                     output_sha256 = compute_file_hash(output_path)
-                except:
+                except Exception:
                     pass
 
             deps = self.manifest_service.build_dependency_graph(all_prompts, date)

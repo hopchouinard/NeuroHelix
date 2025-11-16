@@ -218,7 +218,7 @@ class GeminiCLIAdapter:
                     time.sleep(2)
                     # Force kill if still running
                     e.args[0].kill()
-                except:
+                except Exception:
                     pass
 
             raise
@@ -237,7 +237,7 @@ class GeminiCLIAdapter:
                 timeout=5,
             )
             return result.returncode == 0
-        except:
+        except Exception:
             return False
 
     def get_gemini_version(self) -> Optional[str]:
@@ -257,7 +257,7 @@ class GeminiCLIAdapter:
             if result.returncode == 0:
                 return result.stdout.strip()
             return None
-        except:
+        except Exception:
             return None
 
     def _is_rate_limit_error(self, error_output: str) -> bool:

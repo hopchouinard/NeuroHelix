@@ -122,7 +122,7 @@ class ManifestService:
         if output_path.exists():
             try:
                 sha256 = compute_file_hash(output_path)
-            except:
+            except Exception:
                 pass
 
         # Create completion marker
@@ -211,7 +211,7 @@ class ManifestService:
                 current_hash = compute_file_hash(output_path)
                 if current_hash != marker.sha256:
                     return False
-            except:
+            except Exception:
                 return False
 
         return True

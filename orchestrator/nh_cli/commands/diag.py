@@ -72,7 +72,7 @@ def main(
                         timeout=5,
                     )
                     version = result.stdout.strip().split()[0] if result.returncode == 0 else "unknown"
-            except:
+            except Exception:
                 version = "unknown"
 
             binary_status[binary] = {"available": True, "path": path, "version": version}
