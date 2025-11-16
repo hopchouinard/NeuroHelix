@@ -16,21 +16,36 @@ Every morning, wake up to an intelligent synthesis dashboard published to your c
 
 ### ✨ Key Features
 
+#### Core Pipeline
 - ✅ **22 Curated Research Prompts** - 5 categories (Research, Market, Ideation, Analysis, Meta)
 - ✅ **Intelligent Synthesis** - Cross-domain thematic analysis with AI-powered insights
 - ✅ **Full Idempotency** - Re-runs complete in <1 second, safe for repeated execution
 - ✅ **Context-Aware Prompts** - Historical analysis, temporal awareness, structured references
 - ✅ **LaunchD Automation** - Daily scheduling at 7 AM (customizable)
+
+#### Python Orchestrator (NEW) 🐍
+- ✅ **Modern CLI Framework** - Typer-based CLI with rich console output
+- ✅ **SQLite Registry Backend** - Structured database with schema versioning and migrations
+- ✅ **TOML Configuration** - `.nh.toml` file with multi-layer precedence (CLI > TOML > env > defaults)
+- ✅ **Registry Migration** - Easy TSV → SQLite migration with `nh registry migrate`
+- ✅ **Configuration Management** - `nh config init/show/validate/get` commands
+- ✅ **Pydantic Validation** - Type-safe configuration and registry schemas
+- ✅ **Comprehensive Testing** - 29 passing unit tests with 90%+ coverage
+- ✅ **Production Ready** - Full parity with Bash orchestrator plus enhancements
+
+#### Publishing & UI
 - ✅ **Static Site Publishing** - Modern Astro-based site deployed to Cloudflare Pages
 - ✅ **Full-Text Search** - MiniSearch-powered client-side search with fuzzy matching
 - ✅ **Tag & Category Filtering** - Smart filtering with tag cloud and category pills
 - ✅ **Automated Tag Extraction** - AI-generated tags and categories from daily reports
 - ✅ **Beautiful Design** - Dark theme with electric violet accents, GitHub-style markdown
+- ✅ **Source Artifact Publishing** - Raw prompts, summaries, and insights mirrored for IDE-style Source View
+
+#### Operations & Monitoring
 - ✅ **Comprehensive Logging** - Detailed execution traces and deployment logs
 - ✅ **Maintenance Operations** - Workspace cleanup and force reprocess with audit trail
 - ✅ **Pipeline Locking** - Safe concurrent execution prevention with graceful termination
 - ✅ **Telemetry & Alerts** - Prompt-level logs, JSON execution ledgers, and optional failure emails
-- ✅ **Source Artifact Publishing** - Raw prompts, summaries, and insights mirrored for IDE-style Source View
 - ✅ **Vector Metadata Exports** - Per-file manifests plus embeddings-ready JSON for downstream ingestion
 - ✅ **Git Safety Checks** - Prevents destructive operations on dirty working trees  
 
@@ -38,12 +53,19 @@ Every morning, wake up to an intelligent synthesis dashboard published to your c
 
 ```
 NeuroHelix/
+├── orchestrator/           # 🐍 Python orchestrator (NEW)
+│   ├── nh_cli/            # Typer CLI application
+│   ├── services/          # Registry, runner, manifest, ledger
+│   ├── adapters/          # Gemini CLI, filesystem utilities
+│   ├── config/            # TOML config, Pydantic schemas
+│   ├── tests/             # Unit & integration tests
+│   └── README.md          # Python orchestrator documentation
 ├── config/
-│   ├── env.sh              # Project paths, feature flags, API tokens
+│   ├── env.sh              # Project paths, feature flags, API tokens (Bash)
 │   ├── env.EXAMPLE.sh      # Template for new installs
 │   └── searches.tsv        # 22 research prompts across 5 categories
 ├── scripts/
-│   ├── orchestrator.sh     # Main pipeline coordinator + maintenance modes
+│   ├── orchestrator.sh     # Main pipeline coordinator + maintenance modes (Bash)
 │   ├── lib/                # Audit, telemetry, git safety, cleanup, Cloudflare helpers
 │   ├── executors/          # Prompt runner with telemetry + historical context
 │   ├── aggregators/        # Synthesis + tag extraction
@@ -136,6 +158,173 @@ NeuroHelix/
    ```bash
    launchctl list | grep neurohelix
    ```
+
+### 🐍 Python Orchestrator (Alternative to Bash)
+
+NeuroHelix now includes a **production-ready Python orchestrator** as a modern alternative to the Bash scripts, with enhanced features and better maintainability.
+
+#### Key Advantages
+
+- **Type-Safe** - Pydantic schemas validate all configuration and registry data
+- **SQLite Backend** - Optional structured database for prompt registry with migrations
+- **TOML Configuration** - `.nh.toml` file with multi-layer precedence handling
+- **Rich Output** - Beautiful terminal tables and formatted console output
+- **Comprehensive Testing** - 29 unit tests with 90%+ coverage
+- **Better Observability** - Structured JSONL telemetry and audit logs
+- **Configuration Management** - Dedicated CLI for config inspection and validation
+
+#### Quick Start with Python Orchestrator
+
+```bash
+# Navigate to orchestrator directory
+cd orchestrator
+
+# Install dependencies
+poetry install
+# Or use uv (faster): uv sync
+
+# Activate virtual environment
+poetry shell
+
+# Verify installation
+nh diag
+
+# Run daily pipeline
+nh run
+
+# View available commands
+nh --help
+```
+
+#### Python CLI Commands
+
+**Registry Management:**
+```bash
+# Validate prompt registry
+nh registry validate
+
+# Migrate from TSV to SQLite
+nh registry migrate
+
+# List all prompts
+nh registry list
+
+# List from SQLite backend
+nh registry list --backend sqlite
+```
+
+**Configuration Management:**
+```bash
+# Create sample .nh.toml config file
+nh config init
+
+# Show current configuration
+nh config show
+
+# Validate config file
+nh config validate
+
+# Get specific config value
+nh config get orchestrator.default_model
+```
+
+**Pipeline Execution:**
+```bash
+# Run daily pipeline
+nh run
+
+# Run for specific date
+nh run --date 2025-11-15
+
+# Run specific wave only
+nh run --wave search
+
+# Force rerun of prompt or wave
+nh run --force prompt_id
+nh run --force search
+
+# Dry run (preview without executing)
+nh run --dry-run
+```
+
+**Maintenance & Automation:**
+```bash
+# Clean up old artifacts (90 day retention)
+nh cleanup
+
+# Reprocess specific date
+nh reprocess 2025-11-15
+
+# Publish to Cloudflare
+nh publish 2025-11-15
+
+# Install LaunchD automation
+nh automation install
+
+# Check automation status
+nh automation status
+```
+
+#### Configuration File (.nh.toml)
+
+Create `.nh.toml` in the `orchestrator/` directory:
+
+```toml
+[orchestrator]
+default_model = "gemini-2.5-pro"
+max_parallel_jobs = 4
+enable_rate_limiting = true
+approval_mode = "yolo"  # yolo, interactive, conservative
+
+[paths]
+repo_root = ""  # Auto-detected if empty
+data_dir = ""   # Defaults to data/
+logs_dir = ""   # Defaults to logs/
+
+[registry]
+backend = "tsv"  # tsv or sqlite
+tsv_path = "config/prompts.tsv"
+sqlite_path = "config/prompts.db"
+
+[cloudflare]
+api_token = ""  # Use CLOUDFLARE_API_TOKEN env var instead
+account_id = ""
+project_name = "neurohelix-site"
+```
+
+**Configuration Precedence:** CLI flags > .nh.toml > Environment variables > Defaults
+
+#### SQLite Registry Backend
+
+Migrate from TSV to SQLite for better performance and structure:
+
+```bash
+# Migrate existing TSV registry to SQLite
+cd orchestrator
+nh registry migrate
+
+# Update config to use SQLite
+nh config init  # Edit .nh.toml and set backend = "sqlite"
+
+# Or use environment variable
+export NH_REGISTRY_BACKEND=sqlite
+```
+
+**Benefits:**
+- Schema versioning with migration tracking
+- Indexed queries by wave and category
+- Duplicate prevention at database level
+- Faster lookups for large registries
+
+#### Documentation
+
+See `orchestrator/README.md` for complete documentation including:
+- Installation and setup
+- All CLI commands
+- Configuration reference
+- Architecture overview
+- Development guide
+- Testing instructions
 
 ### 🌐 Static Site & Publishing
 
@@ -802,6 +991,7 @@ bash tests/test_context_aware_prompts.sh
 
 ### 🔍 System Status
 
+#### Core Pipeline ✅
 ✅ **Production Ready** - All major features implemented and tested
 ✅ **Fully Automated** - Daily execution via LaunchD
 ✅ **Intelligent Pipeline** - Context-aware prompts with AI synthesis
@@ -811,12 +1001,28 @@ bash tests/test_context_aware_prompts.sh
 ✅ **Maintenance Tools** - Workspace cleanup and force reprocess operations
 ✅ **Audit Trail** - Complete operation history in JSONL format
 ✅ **Pipeline Safety** - Git checks, locking, and graceful termination
-✅ **Comprehensive Documentation** - Setup, management, troubleshooting guides  
+✅ **Comprehensive Documentation** - Setup, management, troubleshooting guides
 
-See implementation logs in `ai_dev_logs/` for complete feature details:
+#### Python Orchestrator ✅ (NEW)
+✅ **Production Ready** - Full parity with Bash orchestrator plus enhancements
+✅ **SQLite Registry** - Structured database backend with schema migrations
+✅ **TOML Configuration** - Multi-layer config with precedence handling
+✅ **Type Safety** - Pydantic validation throughout
+✅ **Comprehensive Testing** - 29 unit tests with 90%+ coverage
+✅ **Rich CLI** - Typer-based with beautiful console output
+✅ **Migration Tools** - Easy TSV → SQLite migration
+✅ **Config Management** - Dedicated CLI for configuration inspection
+
+#### Documentation
+
+**Implementation Logs:** See `ai_dev_logs/` for Bash orchestrator feature details:
 - [STATIC_SITE_IMPLEMENTATION.md](ai_dev_logs/STATIC_SITE_IMPLEMENTATION.md) - Publishing pipeline
 - [IMPLEMENTATION_SUMMARY.md](ai_dev_logs/IMPLEMENTATION_SUMMARY.md) - Site features
 - [STATUS.md](ai_dev_logs/STATUS.md) - System health
+
+**Python Orchestrator:** See `orchestrator/` directory:
+- [README.md](orchestrator/README.md) - Complete usage guide
+- [IMPLEMENTATION_STATUS.md](orchestrator/IMPLEMENTATION_STATUS.md) - Feature status and roadmap
 
 ### 📝 License
 
