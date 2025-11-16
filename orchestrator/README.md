@@ -1,0 +1,569 @@
+# NeuroHelix Python Orchestrator
+
+Python-based orchestrator for the NeuroHelix automated AI research pipeline. This replaces the Bash-based orchestrator with a robust, testable, and maintainable Typer CLI application.
+
+## Status
+
+**Current Phase:** Initial Implementation (Feature Branch)
+
+### Completed
+- ✅ Project structure and packaging (Poetry/uv)
+- ✅ Pydantic models for configuration and registry
+- ✅ TSV registry loader with validation
+- ✅ SQLite registry backend with migration support
+- ✅ TOML configuration file with precedence handling
+- ✅ Filesystem utilities (locking, hashing, paths)
+- ✅ Manifest and dependency tracking
+- ✅ Ledger and audit logging
+- ✅ Gemini CLI adapter with retries
+- ✅ Runner service with concurrency pools
+- ✅ Typer CLI app with command modules
+
+### In Progress
+- 🔄 Documentation and usage guides
+- 🔄 Test suite (unit and integration)
+
+### Pending
+- ⏳ LaunchD automation service
+- ⏳ Full implementation of maintenance commands
+- ⏳ Migration parity harness
+- ⏳ Production deployment
+
+## Requirements
+
+- Python 3.14.0+
+- Poetry 2.2.1 or uv 0.9.9
+- Gemini CLI (for execution)
+- pnpm (for static site publishing)
+
+## Installation
+
+### Development Setup
+
+```bash
+# Navigate to orchestrator directory
+cd orchestrator
+
+# Install dependencies with Poetry
+poetry install
+
+# Or use uv (faster alternative)
+uv sync
+
+# Activate virtual environment
+poetry shell  # or: source .venv/bin/activate
+```
+
+### Verify Installation
+
+```bash
+# Check all required binaries and environment
+nh diag
+
+# Validate prompt registry
+nh registry validate
+```
+
+## Usage
+
+### Basic Commands
+
+```bash
+# Run daily pipeline for today
+nh run
+
+# Run for specific date
+nh run --date 2025-11-14
+
+# Run specific wave only
+nh run --wave search
+
+# Force rerun of specific prompt or wave
+nh run --force prompt_id
+nh run --force search
+
+# Dry run (preview without executing)
+nh run --dry-run
+```
+
+### Registry Management
+
+```bash
+# Validate prompt registry
+nh registry validate
+
+# Validate with specific backend
+nh registry validate --backend tsv
+nh registry validate --backend sqlite
+
+# List all prompts
+nh registry list
+
+# List prompts from SQLite backend
+nh registry list --backend sqlite
+
+# Migrate TSV registry to SQLite
+nh registry migrate
+
+# Migrate with custom paths
+nh registry migrate --input config/prompts.tsv --output config/prompts.db
+```
+
+### Configuration Management
+
+```bash
+# Initialize new .env.local config file
+nh config init
+
+# Overwrite existing config
+nh config init --force
+
+# Show current configuration
+nh config show
+
+# Validate environment config
+nh config validate
+
+# Get specific config value
+nh config get orchestrator.default_model
+nh config get registry.backend
+```
+
+### Maintenance Commands
+
+```bash
+# Clean up old artifacts (90 day retention)
+nh cleanup
+
+# Custom retention period
+nh cleanup --keep-days 30
+
+# Preview cleanup
+nh cleanup --dry-run
+
+# Reprocess specific date
+nh reprocess 2025-11-14
+
+# Publish to Cloudflare
+nh publish 2025-11-14
+```
+
+### Automation Management
+
+```bash
+# Install LaunchD automation
+nh automation install
+
+# Check automation status
+nh automation status
+
+# Remove automation
+nh automation remove
+```
+
+### Diagnostics
+
+```bash
+# Human-readable diagnostics
+nh diag
+
+# JSON output for scripting
+nh diag --json
+```
+
+## Architecture
+
+### Project Structure
+
+```
+orchestrator/
+├── nh_cli/                 # Typer CLI application
+│   ├── main.py            # Main app entry point
+│   └── commands/          # Command modules
+│       ├── run.py         # Pipeline execution
+│       ├── registry.py    # Registry validation & migration
+│       ├── config.py      # Configuration management
+│       ├── diag.py        # Diagnostics
+│       ├── cleanup.py     # Cleanup operations
+│       ├── reprocess.py   # Reprocessing
+│       ├── publish.py     # Publishing
+│       └── automation.py  # LaunchD management
+├── services/              # Core services
+│   ├── registry.py        # Registry provider interface (TSV)
+│   ├── sqlite_registry.py # SQLite registry provider
+│   ├── runner.py          # Wave scheduling & execution
+│   ├── manifest.py        # Dependency tracking
+│   └── ledger.py          # Telemetry & logging
+├── adapters/              # External integrations
+│   ├── gemini_cli.py      # Gemini CLI wrapper
+│   └── filesystem.py      # File operations & locking
+├── config/                # Configuration
+│   ├── prompts.tsv        # Prompt registry (TSV format)
+│   ├── prompts.db         # Prompt registry (SQLite format, optional)
+│   ├── settings_schema.py # Pydantic models
+│   └── toml_config.py     # .env configuration loader
+└── tests/                 # Test suite
+    ├── unit/              # Unit tests
+    ├── integration/       # Integration tests
+    └── fixtures/          # Test fixtures
+```
+
+### Key Components
+
+#### Registry System
+
+The prompt registry defines execution policies for each prompt. Two backends are supported:
+
+**TSV Backend** (`config/prompts.tsv`) - Default, simple tab-separated format:
+- Human-readable and easy to edit
+- Version control friendly
+- Lightweight
+
+**SQLite Backend** (`config/prompts.db`) - Optional, structured database:
+- Faster queries for large registries
+- Schema versioning for migrations
+- Indexed lookups by wave and category
+- Prevents duplicate entries at database level
+
+**Common Fields:**
+- **prompt_id**: Unique identifier
+- **title**: Human-readable name
+- **wave**: Pipeline wave (search, aggregator, tagger, render, export, publish)
+- **category**: Grouping category
+- **model**: Gemini model to use
+- **temperature**: Temperature setting (0.0-1.0)
+- **token_budget**: Maximum tokens to use
+- **timeout_sec**: Timeout in seconds
+- **max_retries**: Maximum retry attempts
+- **concurrency_class**: Concurrency level (sequential, low, medium, high)
+- **expected_outputs**: Output file pattern
+- **prompt**: The actual prompt text
+- **notes**: Optional description
+
+**Switching Backends:**
+```bash
+# Migrate from TSV to SQLite
+nh registry migrate
+
+# Configure in .env.local
+NH_REGISTRY_BACKEND=sqlite
+NH_REGISTRY_SQLITE_PATH=config/prompts.db
+
+# Or via environment variable
+export NH_REGISTRY_BACKEND=sqlite
+```
+
+#### Wave System
+
+Prompts execute in six waves with dependency tracking:
+
+1. **search** - Individual research prompts
+2. **aggregator** - Synthesize search outputs
+3. **tagger** - Extract metadata
+4. **render** - Generate HTML dashboard
+5. **export** - Create JSON payload
+6. **publish** - Deploy to Cloudflare
+
+#### Configuration System
+
+Configuration follows dotenv conventions:
+
+**Precedence Order:** CLI flags > environment variables (`.env`, `.env.local`, `.env.dev`) > defaults
+
+**Configuration Loader** (`config/toml_config.py`):
+- Loads the `.env*` stack automatically
+- Applies existing environment variables on top of file values
+- Issues a deprecation warning if `.nh.toml` is still present
+- Validates with Pydantic models and caches results
+
+**Config Sections (via environment keys):**
+- **orchestrator**: `NH_DEFAULT_MODEL`, `NH_MAX_PARALLEL_JOBS`, `NH_ENABLE_RATE_LIMITING`, `GEMINI_APPROVAL_MODE`
+- **paths**: `NH_REPO_ROOT`, `NH_DATA_DIR`, `NH_LOGS_DIR`
+- **registry**: `NH_REGISTRY_BACKEND`, `NH_REGISTRY_TSV_PATH`, `NH_REGISTRY_SQLITE_PATH`
+- **cloudflare**: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_PROJECT_NAME`
+- **maintenance**: `NH_REQUIRE_CLEAN_GIT`
+- **notifier**: `ENABLE_NOTIFICATIONS`, `ENABLE_FAILURE_NOTIFICATIONS`, `NH_SUCCESS_NOTIFIER_SCRIPT`, `NH_FAILURE_NOTIFIER_SCRIPT`
+
+**Helper Methods:**
+- `get_config()` - Get merged configuration
+- `get_registry_path()` - Resolve registry path based on backend
+- `get_registry_backend()` - Determine active backend
+- `create_sample_config()` - Generate `.env.local` template
+
+#### Telemetry & Logging
+
+Three-tier logging system:
+
+1. **Run Logs** (`logs/runs/YYYY-MM-DD.log`) - Human-readable execution logs
+2. **Ledger** (`logs/ledger/YYYY-MM-DD.jsonl`) - Structured execution metadata
+3. **Audit Log** (`logs/audit/YYYY-MM-DD.jsonl`) - Maintenance operations
+
+#### Safety Rails
+
+- **Locking**: Single-run enforcement with TTL-based stale lock cleanup
+- **Completion Markers**: Hash-verified idempotency (`.nh_status_*.json`)
+- **Dry Run**: Preview mode for all commands
+- **Force Flags**: Selective rerun capabilities
+- **Exit Codes**: Standardized for CI/CD integration
+
+## Configuration
+
+### Prompt Registry Format
+
+TSV file with tab-separated columns:
+
+```tsv
+prompt_id	title	wave	category	model	tools	temperature	token_budget	timeout_sec	max_retries	concurrency_class	expected_outputs	notes
+ai_ecosystem_watch	AI Ecosystem Watch	search	Research	gemini-2.5-pro		0.7	32000	120	3	high	ai_ecosystem_watch.md	Track AI announcements
+```
+
+### Environment Configuration (.env*)
+
+Create `.env.local` (and optional `.env`, `.env.dev`) in the repository root:
+
+```bash
+# Orchestrator defaults
+NH_DEFAULT_MODEL=gemini-2.5-pro
+NH_MAX_PARALLEL_JOBS=4
+NH_ENABLE_RATE_LIMITING=true
+GEMINI_APPROVAL_MODE=yolo
+
+# Paths
+NH_REPO_ROOT=
+NH_DATA_DIR=
+NH_LOGS_DIR=
+
+# Registry
+NH_REGISTRY_BACKEND=tsv
+NH_REGISTRY_TSV_PATH=config/prompts.tsv
+NH_REGISTRY_SQLITE_PATH=config/prompts.db
+
+# Cloudflare
+CLOUDFLARE_API_TOKEN=
+CLOUDFLARE_ACCOUNT_ID=
+CLOUDFLARE_PROJECT_NAME=neurohelix-site
+
+# Maintenance
+NH_REQUIRE_CLEAN_GIT=true
+
+# Notifier Hooks
+ENABLE_NOTIFICATIONS=false
+ENABLE_FAILURE_NOTIFICATIONS=false
+NH_SUCCESS_NOTIFIER_SCRIPT=scripts/notifiers/notify.sh
+NH_FAILURE_NOTIFIER_SCRIPT=scripts/notifiers/notify_failures.sh
+```
+
+**Generate sample config:**
+```bash
+nh config init
+```
+
+### Environment Variables
+
+Environment variables override values loaded from `.env*` files:
+
+```bash
+# Orchestrator settings
+export NH_DEFAULT_MODEL=gemini-2.5-pro
+export NH_MAX_PARALLEL_JOBS=8
+export NH_ENABLE_RATE_LIMITING=true
+export GEMINI_APPROVAL_MODE=yolo
+
+# Registry settings
+export NH_REGISTRY_BACKEND=sqlite
+export NH_REGISTRY_TSV_PATH=config/prompts.tsv
+export NH_REGISTRY_SQLITE_PATH=config/prompts.db
+
+# Cloudflare settings
+export CLOUDFLARE_API_TOKEN=your_token
+
+# Maintenance + notifier
+export NH_REQUIRE_CLEAN_GIT=true
+export ENABLE_NOTIFICATIONS=false
+export ENABLE_FAILURE_NOTIFICATIONS=true
+export NH_SUCCESS_NOTIFIER_SCRIPT=scripts/notifiers/notify.sh
+export NH_FAILURE_NOTIFIER_SCRIPT=scripts/notifiers/notify_failures.sh
+export CLOUDFLARE_ACCOUNT_ID=your_account_id
+export CLOUDFLARE_PROJECT_NAME=neurohelix-site
+
+# Path settings
+export NH_REPO_ROOT=/path/to/neurohelix
+export NH_DATA_DIR=custom/data
+export NH_LOGS_DIR=custom/logs
+```
+
+## Development
+
+### Running Tests
+
+```bash
+# Run all tests
+poetry run pytest
+
+# Run with coverage
+poetry run pytest --cov
+
+# Run specific test file
+poetry run pytest tests/unit/test_registry.py
+```
+
+### Code Quality
+
+```bash
+# Format with Black
+poetry run black .
+
+# Lint with Ruff
+poetry run ruff check .
+
+# Type check with mypy
+poetry run mypy .
+```
+
+### Adding a New Command
+
+1. Create module in `nh_cli/commands/`
+2. Define Typer app and command functions
+3. Register in `nh_cli/main.py`
+4. Write tests in `tests/unit/`
+
+Example:
+
+```python
+# nh_cli/commands/mycommand.py
+import typer
+app = typer.Typer()
+
+@app.command()
+def main():
+    """Command description."""
+    pass
+
+# nh_cli/main.py
+from nh_cli.commands import mycommand
+app.add_typer(mycommand.app, name="mycommand")
+```
+
+## Telemetry Outputs
+
+### Run Manifest
+
+`data/manifests/YYYY-MM-DD.json`:
+
+```json
+{
+  "run_id": "uuid",
+  "date": "2025-11-14",
+  "started_at": "2025-11-14T07:00:00",
+  "ended_at": "2025-11-14T07:15:00",
+  "completed_prompts": ["prompt1", "prompt2"],
+  "failed_prompts": [],
+  "dry_run": false
+}
+```
+
+### Completion Marker
+
+`.nh_status_prompt_name.json`:
+
+```json
+{
+  "prompt_id": "ai_ecosystem_watch",
+  "started_at": "2025-11-14T07:00:00",
+  "ended_at": "2025-11-14T07:02:00",
+  "exit_code": 0,
+  "retries": 0,
+  "sha256": "abc123..."
+}
+```
+
+### Ledger Entry
+
+`logs/ledger/YYYY-MM-DD.jsonl` (one line per prompt):
+
+```json
+{"run_id": "uuid", "prompt_id": "ai_ecosystem_watch", "started_at": "...", "success": true, ...}
+```
+
+## Migration from Bash
+
+The Python orchestrator maintains compatibility with existing data structures:
+
+- Same directory layouts (`data/outputs/daily/`, etc.)
+- Same file naming conventions
+- Same manifest formats for downstream consumers
+- Backward-compatible with existing scripts
+
+### Comparison
+
+| Feature | Bash | Python |
+|---------|------|--------|
+| Execution | Shell scripts | Typer CLI |
+| Concurrency | Parallel jobs | ThreadPoolExecutor |
+| Retry Logic | Basic | Exponential backoff |
+| Logging | Text files | Structured JSONL + text |
+| Locking | flock | fcntl with TTL |
+| Validation | None | Pydantic schemas |
+| Testing | Manual | Automated unit/integration |
+| Telemetry | Basic | Comprehensive |
+
+## Troubleshooting
+
+### Lock Errors
+
+If you get "Lock already held" errors:
+
+```bash
+# Check lock status
+ls -la var/locks/
+
+# Remove stale lock (careful!)
+rm var/locks/nh-run.lock
+
+# Or use force flag (not recommended during active runs)
+nh run --force
+```
+
+### Registry Validation Failures
+
+```bash
+# Validate registry
+nh registry validate
+
+# Check for common issues:
+# - Duplicate prompt_id values
+# - Missing required columns
+# - Invalid wave names
+# - Temperature > 1.0 with tools enabled
+```
+
+### Missing Dependencies
+
+```bash
+# Check diagnostics
+nh diag
+
+# Install missing binaries
+# - gemini: Install from Google
+# - pnpm: brew install pnpm
+# - wrangler: npm install -g wrangler
+```
+
+## Exit Codes
+
+- `0` - Success
+- `10` - Configuration/validation error
+- `20` - Dependency missing or lock held
+- `30` - External tool failure
+
+## Contributing
+
+1. Work on feature branches
+2. Follow TDD: write tests before implementation
+3. Use Black for formatting
+4. Ensure mypy passes
+5. Update documentation
+
+## License
+
+Part of the NeuroHelix project.
