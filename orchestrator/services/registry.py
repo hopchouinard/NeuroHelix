@@ -157,26 +157,6 @@ class TSVRegistryProvider:
         return len(errors) == 0, errors
 
 
-class SQLiteRegistryProvider:
-    """SQLite-based prompt registry provider (future implementation)."""
-
-    def __init__(self, db_path: Path):
-        """Initialize the SQLite registry provider.
-
-        Args:
-            db_path: Path to the SQLite database
-        """
-        self.db_path = db_path
-        raise NotImplementedError("SQLite registry provider not yet implemented")
-
-    def load(self) -> list[PromptPolicy]:
-        """Load prompts from SQLite database."""
-        raise NotImplementedError("SQLite registry provider not yet implemented")
-
-    def validate(self) -> tuple[bool, list[str]]:
-        """Validate the loaded registry."""
-        raise NotImplementedError("SQLite registry provider not yet implemented")
-
 
 def get_registry_provider(registry_path: Path, format_type: str = "tsv") -> RegistryProvider:
     """Factory function to get the appropriate registry provider.

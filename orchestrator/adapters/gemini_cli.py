@@ -210,17 +210,7 @@ class GeminiCLIAdapter:
             return result.returncode, result.stdout
 
         except subprocess.TimeoutExpired as e:
-            # Kill the process
-            if e.args and len(e.args) > 0:
-                try:
-                    # Try to terminate gracefully
-                    e.args[0].terminate()
-                    time.sleep(2)
-                    # Force kill if still running
-                    e.args[0].kill()
-                except Exception:
-                    pass
-
+            # subprocess.run() will already attempt to terminate the process on timeout.
             raise
 
     def check_gemini_cli_available(self) -> bool:

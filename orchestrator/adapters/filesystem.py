@@ -52,7 +52,7 @@ class FileLock:
                 existing_metadata = self._read_lock_metadata()
                 if existing_metadata:
                     timestamp = existing_metadata.get("timestamp", 0)
-                    ttl = existing_metadata.get("ttl", self.ttl_seconds)  # Use TTL from lock file
+                    ttl = self.ttl_seconds  # Always use configured TTL for security
                     age = time.time() - timestamp
 
                     if age < ttl:
